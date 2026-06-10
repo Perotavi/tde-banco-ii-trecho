@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Trecho{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="app-shell">
+
+    <aside class="sidebar">
+        <a href="{{ url_for('posts.feed') }}" class="sidebar-logo">Trecho</a>
+
+        <nav class="sidebar-menu">
+            <a href="{{ url_for('posts.feed') }}">Página inicial</a>
+
+            {% if current_user.is_authenticated %}
+                <a href="#">Perfil</a>
+
+                {% if current_user.tem_perfil('usuario', 'moderador', 'admin') %}
+                    <a href="{{ url_for('posts.novo_post') }}" class="sidebar-post-button" id="abrirModalNovoPost">Novo trecho</a>
+                {% endif %}
+
+                {% if current_user.tem_perfil('moderador', 'admin') %}
+                    <a href="{{ url_for('moderacao.painel_moderacao') }}">Moderação</a>
+                {% endif %}
+
+                {% if current_user.tem_perfil('analista', 'admin') %}
+                    <a href="{{ url_for('relatorios.painel_relatorios') }}">Relatórios</a>
+                {% endif %}
+
+                {% if current_user.tem_perfil('admin') %}
+                    <a href="{{ url_for('admin.painel_admin') }}">Administração</a>
+                {% endif %}
+
+                <a href="{{ url_for('auth.logout') }}">Sair</a>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}">Entrar</a>
+            {% endif %}
+        </nav>
+
+        {% if current_user.is_authenticated %}
+            <div class="sidebar-user">
+                <div class="avatar-small">
+                    {{ current_user.nome[0] }}
+                </div>
+
+                <div>
+                    <strong>{{ current_user.nome }}</strong>
+                    <span>@{{ current_user.username }}</span>
+                </div>
+            </div>
+        {% endif %}
+    </aside>
+
+    <main class="content-column">
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% if mensagens %}
+                <div class="flash-area">
+                    {% for categoria, mensagem in mensagens %}
+                        <div class="flash {{ categoria }}">
+                            {{ mensagem }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <aside class="right-column">
+        <div class="side-card">
+            <h2>Sobre o Trecho</h2>
+            <p>O Trecho é uma rede social de microblogging criada para compartilhar ideias curtas de forma simples, organizada e segura.
+                O sistema foi desenvolvido com Flask, MySQL e SQLAlchemy, contando com recursos de publicação, comentários, 
+                curtidas, denúncias, moderação, auditoria e controle de acesso por perfis.
+                Novas versões em breve.</p>
+        </div>
+
+        <div class="side-card">
+            <h2>Atalhos</h2>
+            <a href="{{ url_for('posts.feed') }}">Feed</a>
+
+            {% if current_user.is_authenticated and current_user.tem_perfil('moderador', 'admin') %}
+                <a href="{{ url_for('moderacao.painel_moderacao') }}">Denúncias pendentes</a>
+            {% endif %}
+
+            {% if current_user.is_authenticated and current_user.tem_perfil('analista', 'admin') %}
+                <a href="{{ url_for('relatorios.painel_relatorios') }}">Relatórios</a>
+            {% endif %}
+        </div>
+    </aside>
+
+</div>
+
+{% if current_user.is_authenticated and current_user.tem_perfil('usuario', 'moderador', 'admin') %}
+<div class="modal-overlay" id="modalNovoPost">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2>Novo trecho</h2>
+
+            <button type="button" class="modal-close" id="fecharModalNovoPost">
+                ×
+            </button>
+        </div>
+
+        <form method="POST" action="{{ url_for('posts.criar_post_feed') }}" class="modal-form">
+           <textarea
+                name="conteudo"
+                id="campoPostModal"
+                maxlength="280"
+                rows="5"
+                placeholder="Postar um trecho"
+                required
+            ></textarea>
+
+            <div class="modal-footer">
+                <span>Máximo de 280 caracteres</span>
+                <button type="submit" id="botaoPostarModal" disabled>Postar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const botaoAbrir = document.getElementById("abrirModalNovoPost");
+        const botaoFechar = document.getElementById("fecharModalNovoPost");
+        const modal = document.getElementById("modalNovoPost");
+
+        if (!botaoAbrir || !botaoFechar || !modal) {
+            return;
+        }
+
+        botaoAbrir.addEventListener("click", function (event) {
+            event.preventDefault();
+            modal.classList.add("active");
+        });
+
+        botaoFechar.addEventListener("click", function () {
+            modal.classList.remove("active");
+        });
+
+        modal.addEventListener("click", function (event) {
+            if (event.target === modal) {
+                modal.classList.remove("active");
+            }
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                modal.classList.remove("active");
+            }
+        });
+    });
+</script>
+{% endif %}
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        function configurarBotaoPostagem(campoId, botaoId) {
+            const campo = document.getElementById(campoId);
+            const botao = document.getElementById(botaoId);
+
+            if (!campo || !botao) {
+                return;
+            }
+
+            function verificarCampo() {
+                const temTexto = campo.value.trim().length > 0;
+                botao.disabled = !temTexto;
+            }
+
+            campo.addEventListener("input", verificarCampo);
+            verificarCampo();
+        }
+
+        configurarBotaoPostagem("campoPostFeed", "botaoPostarFeed");
+        configurarBotaoPostagem("campoPostModal", "botaoPostarModal");
+    });
+</script>
+</body>
+</html>

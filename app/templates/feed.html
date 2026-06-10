@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Feed - Trecho{% endblock %}
+
+{% block content %}
+
+<section class="timeline-header">
+    <div class="timeline-tabs">
+        <button class="active">Feed</button>
+        <button>Notificações</button>
+    </div>
+</section>
+
+{% if current_user.is_authenticated and current_user.tem_perfil('usuario', 'moderador', 'admin') %}
+<section class="composer">
+    <div class="composer-avatar">
+        {{ current_user.nome[0] }}
+    </div>
+
+    <form method="POST" action="{{ url_for('posts.criar_post_feed') }}" class="composer-body">
+        <textarea
+            name="conteudo"
+            class="composer-textarea"
+            id="campoPostFeed"
+            rows="3"
+            maxlength="280"
+            placeholder="Postar um trecho"
+            required
+        ></textarea>
+
+        <div class="composer-footer">
+            <span class="composer-info">Compartilhe uma ideia curta com a rede</span>
+
+            <button type="submit" class="composer-button" id="botaoPostarFeed" disabled>Postar</button>
+        </div>
+    </form>
+</section>
+{% endif %}
+
+<section class="timeline-feed">
+    {% for post in posts %}
+        <article class="tweet-card">
+            <div class="tweet-avatar">
+                {{ post.usuario.nome[0] }}
+            </div>
+
+            <div class="tweet-main">
+                <div class="tweet-top">
+                    <div class="tweet-user-line">
+                        <strong>{{ post.usuario.nome }}</strong>
+                        <span>@{{ post.usuario.username }}</span>
+                        <span>·</span>
+                        <small>{{ post.data_publicacao }}</small>
+                    </div>
+
+                    {% if current_user.is_authenticated and current_user.id != post.usuario_id %}
+                        <a href="{{ url_for('posts.denunciar_post', post_id=post.id) }}" class="tweet-more">
+                            ⋯
+                        </a>
+                    {% endif %}
+                </div>
+
+                <div class="tweet-content">
+                    <p>{{ post.conteudo }}</p>
+                </div>
+
+                <div class="tweet-actions">
+                    <span>💬 0</span>
+                    <span>❤ 0</span>
+
+                    {% if current_user.is_authenticated and current_user.id != post.usuario_id %}
+                        <a href="{{ url_for('posts.denunciar_post', post_id=post.id) }}">Denunciar</a>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+    {% else %}
+        <div class="empty-state" style="margin: 16px;">
+            <p>Nenhum post encontrado.</p>
+        </div>
+    {% endfor %}
+</section>
+
+{% endblock %}

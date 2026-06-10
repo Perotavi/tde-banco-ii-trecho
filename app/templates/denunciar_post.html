@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Denunciar post - Trecho{% endblock %}
+
+{% block content %}
+
+<section class="auth-card">
+    <h1>Denunciar post</h1>
+    <p class="subtitle">Informe o motivo para enviar este post à moderação.</p>
+
+    <article class="post-card">
+        <div class="post-header">
+            <div>
+                <strong>{{ post.usuario.nome }}</strong>
+                <span>@{{ post.usuario.username }}</span>
+            </div>
+        </div>
+
+        <p class="post-content">{{ post.conteudo }}</p>
+    </article>
+
+    <form method="POST" class="form" style="margin-top: 20px;">
+        <label for="motivo">Motivo da denúncia</label>
+        <textarea
+            id="motivo"
+            name="motivo"
+            rows="5"
+            maxlength="255"
+            placeholder="Explique o motivo da denúncia..."
+            required
+        ></textarea>
+
+        <button type="submit">Enviar denúncia</button>
+    </form>
+</section>
+
+{% endblock %}

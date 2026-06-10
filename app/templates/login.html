@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Entrar - Trecho{% endblock %}
+
+{% block content %}
+
+<section class="auth-card">
+    <h1>Entrar no Trecho</h1>
+    <p class="subtitle">Acesse sua conta para publicar, moderar ou visualizar relatórios.</p>
+
+    <form method="POST" class="form">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" placeholder="seu@email.com" required>
+
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" name="senha" placeholder="Sua senha" required>
+
+        <button type="submit">Entrar</button>
+    </form>
+
+    <div class="test-users">
+        <h2>Usuários de teste</h2>
+        <p>Senha de todos: <strong>123456</strong></p>
+
+        <ul>
+            <li><strong>Usuário:</strong> pedro@trecho.com</li>
+            <li><strong>Moderador:</strong> bruno@trecho.com</li>
+            <li><strong>Analista:</strong> carla@trecho.com</li>
+            <li><strong>Admin:</strong> daniel@trecho.com</li>
+        </ul>
+    </div>
+</section>
+
+{% endblock %}
