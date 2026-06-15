@@ -81,6 +81,8 @@ USE rede_trecho;
 SOURCE C:/Users/SEU_USUARIO/tde-banco-ii-trecho/database/02_dados_iniciais.sql;
 SOURCE C:/Users/SEU_USUARIO/tde-banco-ii-trecho/database/03_views.sql;
 SOURCE C:/Users/SEU_USUARIO/tde-banco-ii-trecho/database/04_procedures.sql;
+SOURCE C:/Users/SEU_USUARIO/tde-banco-ii-trecho/database/05_roles_permissoes.sql;
+SOURCE C:/Users/SEU_USUARIO/tde-banco-ii-trecho/database/06_consultas.sql;
 
 Para conferir se deu certo:
 

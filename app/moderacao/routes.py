@@ -28,14 +28,15 @@ def painel_moderacao():
                 autor_id,
                 autor_nome,
                 autor_username,
+                autor_perfil,
                 denunciante_id,
                 denunciante_nome,
                 denunciante_username
-            FROM view_denuncias_moderacao
-            WHERE status_denuncia = 'pendente'
-            ORDER BY data_denuncia ASC
-        """)
-    ).mappings().all()
+        FROM view_denuncias_moderacao
+        WHERE status_denuncia = 'pendente'
+        ORDER BY data_denuncia ASC
+    """)
+).mappings().all()
 
     return render_template("moderacao.html", denuncias=denuncias)
 

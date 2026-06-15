@@ -30,24 +30,30 @@ SELECT
 FROM usuarios u
 WHERE u.status_conta = 'ativo';
 
+DROP VIEW IF EXISTS view_denuncias_moderacao;
 CREATE VIEW view_denuncias_moderacao AS
 SELECT
     d.id AS denuncia_id,
     d.motivo,
     d.status_denuncia,
     d.data_denuncia,
+
     p.id AS post_id,
     p.conteudo AS conteudo_denunciado,
     p.status_post,
+
     autor.id AS autor_id,
     autor.nome AS autor_nome,
     autor.username AS autor_username,
+    perfil_autor.nome AS autor_perfil,
+
     denunciante.id AS denunciante_id,
     denunciante.nome AS denunciante_nome,
     denunciante.username AS denunciante_username
 FROM denuncias d
 INNER JOIN posts p ON d.post_id = p.id
 INNER JOIN usuarios autor ON p.usuario_id = autor.id
+INNER JOIN perfis perfil_autor ON autor.perfil_id = perfil_autor.id
 INNER JOIN usuarios denunciante ON d.denunciante_id = denunciante.id;
 
 CREATE VIEW view_relatorio_engajamento AS

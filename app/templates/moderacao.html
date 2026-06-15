@@ -30,6 +30,7 @@
             <div class="empty-state" style="margin-top: 15px;">
                 <p><strong>Motivo:</strong> {{ denuncia.motivo }}</p>
                 <p><strong>Autor do post:</strong> {{ denuncia.autor_nome }} — @{{ denuncia.autor_username }}</p>
+                <p><strong>Perfil do autor:</strong> {{ denuncia.autor_perfil }}</p>
                 <p><strong>Denunciante:</strong> {{ denuncia.denunciante_nome }} — @{{ denuncia.denunciante_username }}</p>
                 <p><strong>Status da denúncia:</strong> {{ denuncia.status_denuncia }}</p>
                 <p><strong>Status do post:</strong> {{ denuncia.status_post }}</p>
@@ -56,32 +57,45 @@
                     <button type="submit" class="danger-button">Remover post</button>
                 </form>
 
-                <form method="POST" action="{{ url_for('moderacao.alterar_status_usuario', usuario_id=denuncia.autor_id, novo_status='suspenso') }}">
-                    <input
-                        type="hidden"
-                        name="justificativa"
-                        value="Usuário suspenso após denúncia analisada pela moderação."
-                    >
-                    <button type="submit">Suspender autor</button>
-                </form>
+                {% if current_user.id == denuncia.autor_id %}
+                    <p class="permission-note">
+                        Não é possível alterar o status da própria conta.
+                    </p>
 
-                <form method="POST" action="{{ url_for('moderacao.alterar_status_usuario', usuario_id=denuncia.autor_id, novo_status='banido') }}">
-                    <input
-                        type="hidden"
-                        name="justificativa"
-                        value="Usuário banido após denúncia grave analisada pela moderação."
-                    >
-                    <button type="submit" class="danger-button">Banir autor</button>
-                </form>
+                {% elif current_user.tem_perfil('admin') or denuncia.autor_perfil not in ['admin', 'moderador'] %}
 
-                <form method="POST" action="{{ url_for('moderacao.alterar_status_usuario', usuario_id=denuncia.autor_id, novo_status='ativo') }}">
-                    <input
-                        type="hidden"
-                        name="justificativa"
-                        value="Usuário reativado após revisão da moderação."
-                    >
-                    <button type="submit">Reativar autor</button>
-                </form>
+                    <form method="POST" action="{{ url_for('moderacao.alterar_status_usuario', usuario_id=denuncia.autor_id, novo_status='suspenso') }}">
+                        <input
+                            type="hidden"
+                            name="justificativa"
+                            value="Usuário suspenso após denúncia analisada pela moderação."
+                        >
+                        <button type="submit">Suspender autor</button>
+                    </form>
+
+                    <form method="POST" action="{{ url_for('moderacao.alterar_status_usuario', usuario_id=denuncia.autor_id, novo_status='banido') }}">
+                        <input
+                            type="hidden"
+                            name="justificativa"
+                            value="Usuário banido após denúncia grave analisada pela moderação."
+                        >
+                        <button type="submit" class="danger-button">Banir autor</button>
+                    </form>
+
+                    <form method="POST" action="{{ url_for('moderacao.alterar_status_usuario', usuario_id=denuncia.autor_id, novo_status='ativo') }}">
+                        <input
+                            type="hidden"
+                            name="justificativa"
+                            value="Usuário reativado após revisão da moderação."
+                        >
+                        <button type="submit">Reativar autor</button>
+                    </form>
+
+                {% else %}
+                    <p class="permission-note">
+                        Moderadores não podem suspender, banir ou reativar moderadores e administradores.
+                    </p>
+                {% endif %}
             </div>
         </article>
     {% else %}

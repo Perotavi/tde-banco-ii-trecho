@@ -6,11 +6,135 @@
 
 <section class="page-header">
     <h1>Relatórios</h1>
-    <p>Consultas avançadas e indicadores da rede social.</p>
+    <p>Área de leitura para acompanhamento de engajamento, usuários, denúncias e moderação.</p>
 </section>
 
-<div class="empty-state">
-    <p>Em breve esta tela exibirá rankings, estatísticas e consultas avançadas.</p>
-</div>
+<section class="report-section">
+    <h2>Ranking de posts por engajamento</h2>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Post</th>
+                    <th>Autor</th>
+                    <th>Curtidas</th>
+                    <th>Comentários</th>
+                    <th>Denúncias</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in ranking_posts %}
+                    <tr>
+                        <td>{{ post.conteudo }}</td>
+                        <td>@{{ post.autor_username }}</td>
+                        <td>{{ post.total_curtidas }}</td>
+                        <td>{{ post.total_comentarios }}</td>
+                        <td>{{ post.total_denuncias }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5">Nenhum dado encontrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-grid">
+    <div class="report-section">
+        <h2>Usuários por perfil</h2>
+
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Perfil</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in usuarios_por_perfil %}
+                        <tr>
+                            <td>{{ item.perfil }}</td>
+                            <td>{{ item.total }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="2">Nenhum dado encontrado.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-section">
+        <h2>Denúncias por status</h2>
+
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in denuncias_por_status %}
+                        <tr>
+                            <td>{{ item.status_denuncia }}</td>
+                            <td>{{ item.total }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="2">Nenhuma denúncia encontrada.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>Histórico de moderação</h2>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Moderador</th>
+                    <th>Ação</th>
+                    <th>Justificativa</th>
+                    <th>Usuário afetado</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs_moderacao %}
+                    <tr>
+                        <td>@{{ log.moderador_username }}</td>
+                        <td>{{ log.acao }}</td>
+                        <td>{{ log.justificativa }}</td>
+                        <td>
+                            {% if log.usuario_alvo_username %}
+                                @{{ log.usuario_alvo_username }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ log.data_acao }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5">Nenhum log encontrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
 
 {% endblock %}

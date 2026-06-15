@@ -28,6 +28,9 @@ class Usuario(UserMixin, db.Model):
         nullable=False,
         default="ativo"
     )
+
+    suspenso_ate = db.Column(db.DateTime)
+    motivo_punicao = db.Column(db.String(255))
     data_criacao = db.Column(db.DateTime)
 
     perfil = db.relationship("Perfil", back_populates="usuarios")

@@ -181,5 +181,63 @@
         configurarBotaoPostagem("campoPostModal", "botaoPostarModal");
     });
 </script>
+
+{% set mostrar_suspensao = session.pop('aviso_suspenso', False) %}
+{% set suspenso_ate_texto = session.pop('suspenso_ate_texto', 'prazo não definido') %}
+{% set mostrar_banimento = session.pop('aviso_banido', False) %}
+
+{% if mostrar_suspensao %}
+<div class="modal-overlay active" id="modalSuspensao">
+    <div class="modal-card modal-alert">
+        <div class="modal-header">
+            <h2>Conta suspensa</h2>
+
+            <button type="button" class="modal-close" onclick="document.getElementById('modalSuspensao').classList.remove('active')">
+                ×
+            </button>
+        </div>
+
+        <div class="modal-alert-body">
+            <p>
+                Sua conta está suspensa por violação às diretrizes da comunidade até
+                <strong>{{ suspenso_ate_texto }}</strong>.
+            </p>
+
+            <p>
+                Durante esse período você não poderá publicar ou comentar, mas ainda poderá
+                curtir, denunciar conteúdos, bloquear usuários e editar seu perfil.
+            </p>
+
+            <button type="button" onclick="document.getElementById('modalSuspensao').classList.remove('active')">
+                Entendi
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if mostrar_banimento %}
+<div class="modal-overlay active" id="modalBanimento">
+    <div class="modal-card modal-alert">
+        <div class="modal-header">
+            <h2>Conta banida</h2>
+
+            <button type="button" class="modal-close" onclick="document.getElementById('modalBanimento').classList.remove('active')">
+                ×
+            </button>
+        </div>
+
+        <div class="modal-alert-body">
+            <p>
+                Sua conta está banida por violação grave às diretrizes da comunidade.
+            </p>
+
+            <button type="button" onclick="document.getElementById('modalBanimento').classList.remove('active')">
+                Entendi
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
 </body>
 </html>
