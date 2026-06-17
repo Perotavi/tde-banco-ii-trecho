@@ -118,21 +118,6 @@ Digite a senha quando solicitado.
 
 Para simplificar a importação, o projeto usa um arquivo `run.sql` na raiz do projeto.
 
-A estrutura esperada é:
-
-
-tde-banco-ii-trecho/
-├── run.sql
-├── database/
-│   ├── 01_schema.sql
-│   ├── 02_dados_iniciais.sql
-│   ├── 03_views.sql
-│   ├── 04_procedures.sql
-│   ├── 05_roles_permissoes.sql
-│   ├── 06_consultas.sql
-│   └── 07_melhorias_sociais.sql
-
-
 O arquivo `run.sql` deve conter:
 
 
