@@ -27,9 +27,6 @@ EMAIL_ADMIN = "daniel@trecho.com"
 SENHA_PADRAO = "123456"
 
 
-# ============================================================
-# PREPARAÇÃO DO BANCO PARA O FLUXO COMPLETO
-# ============================================================
 
 @pytest.fixture(scope="session", autouse=True)
 def preparar_banco_para_fluxo_completo():
@@ -479,9 +476,7 @@ def driver():
     navegador.quit()
 
 
-# ============================================================
 # FUNÇÕES AUXILIARES DO SELENIUM
-# ============================================================
 
 def pausar(segundos=0.6):
     time.sleep(segundos)
@@ -898,15 +893,11 @@ def validar_analista(driver):
     driver.get(BASE_URL)
     esperar_body(driver)
 
-    # O analista pode visualizar o feed, mas não deve ter campo de postagem.
-    # Não usamos page_source aqui porque o texto "campoPostFeed" pode aparecer
-    # dentro de JavaScript do template mesmo sem o campo estar disponível.
     assert not existe_elemento_visivel(driver, By.ID, "campoPostFeed")
     assert not existe_elemento_visivel(driver, By.ID, "botaoPostarFeed")
     assert not existe_botao_ou_link_visivel(driver, "Postar")
     assert not existe_botao_ou_link_visivel(driver, "Novo trecho")
 
-    # O analista deve ver relatórios, mas não deve ver atalhos de moderação/admin.
     assert existe_botao_ou_link_visivel(driver, "Relatórios")
     assert not existe_botao_ou_link_visivel(driver, "Moderação")
     assert not existe_botao_ou_link_visivel(driver, "Administração")
@@ -935,9 +926,7 @@ def validar_analista(driver):
     salvar_evidencia(driver, "analista_rotas_restritas_bloqueadas")
 
 
-# ============================================================
 # FLUXO COMPLETO PEDIDO
-# ============================================================
 
 def test_fluxo_completo_trecho_procedures_e_papeis(driver):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -958,7 +947,6 @@ def test_fluxo_completo_trecho_procedures_e_papeis(driver):
         "Denúncia criada para o fluxo completo de moderação."
     )
 
-    # 1) Convidado visualiza o feed e tenta interagir.
     logout(driver)
     driver.get(BASE_URL)
     esperar_body(driver)
@@ -976,7 +964,6 @@ def test_fluxo_completo_trecho_procedures_e_papeis(driver):
     assert "Entrar" in driver.page_source
     salvar_evidencia(driver, "02_convidado_modal_entre_para_interagir")
 
-    # 2) Tenta entrar com senha errada e depois com senha correta.
     driver.get(f"{BASE_URL}/auth/login")
     esperar_body(driver)
 
@@ -991,19 +978,16 @@ def test_fluxo_completo_trecho_procedures_e_papeis(driver):
 
     login(driver, EMAIL_USUARIO, nome_evidencia="05_login_usuario_correto")
 
-    # 3) Usuário comum cria post.
     preencher_e_enviar_post(driver, post_pedro_original)
     esperar(driver).until(EC.text_to_be_present_in_element((By.TAG_NAME, "body"), post_pedro_original))
     assert obter_post_por_conteudo(post_pedro_original) is not None
     salvar_evidencia(driver, "06_usuario_criou_post")
 
-    # 4) Edita post pelo modal/menu do próprio post.
     editar_post_pelo_feed(driver, post_pedro_original, post_pedro_editado)
     esperar(driver).until(EC.text_to_be_present_in_element((By.TAG_NAME, "body"), post_pedro_editado))
     assert obter_post_por_conteudo(post_pedro_editado) is not None
     salvar_evidencia(driver, "07_usuario_editou_post")
 
-    # 5) Abre notificações e perfil.
     driver.get(f"{BASE_URL}/notificacoes/")
     esperar_body(driver)
     assert "Notificações" in driver.page_source
@@ -1014,14 +998,12 @@ def test_fluxo_completo_trecho_procedures_e_papeis(driver):
     assert "@pedro" in driver.page_source
     salvar_evidencia(driver, "09_usuario_abriu_perfil")
 
-    # 6) Edita bio do perfil.
     editar_bio_perfil(driver, bio_pedro)
     driver.get(f"{BASE_URL}/perfil/pedro")
     esperar_body(driver)
     assert bio_pedro in driver.page_source
     salvar_evidencia(driver, "10_usuario_editou_bio")
 
-    # 7) Comenta post, curte post e denuncia post.
     comentario = f"Comentário do fluxo completo {timestamp}"
     comentar_post(driver, post_alice_interacao_id, comentario)
     assert contar_comentarios(post_alice_interacao_id, comentario) == 1
@@ -1039,7 +1021,6 @@ def test_fluxo_completo_trecho_procedures_e_papeis(driver):
     )
     assert contar_denuncias(post_alice_interacao_id, EMAIL_USUARIO) >= 1
 
-    # 8) Bloqueia Alice, desbloqueia pelo banco, depois denuncia outro post.
     bloquear_usuario_pelo_post(driver, post_alice_interacao_id, post_alice_interacao)
     assert contar_bloqueio(EMAIL_USUARIO, EMAIL_ALICE) == 1
     salvar_evidencia(driver, "14_usuario_bloqueou_alice")
@@ -1061,13 +1042,11 @@ def test_fluxo_completo_trecho_procedures_e_papeis(driver):
 
     logout(driver)
 
-    # 9) Moderador acessa moderação e remove post denunciado.
     login(driver, EMAIL_MODERADOR, nome_evidencia="17_moderador_login")
     remover_post_na_moderacao(driver, post_alice_denuncia_moderacao)
     assert obter_status_post(post_alice_denuncia_moderacao_id) == "removido"
     salvar_evidencia(driver, "18_moderador_removeu_post")
 
-    # 10) Moderador acessa perfil da Alice e suspende usuária.
     suspender_usuario_pelo_perfil(driver, "alice", horas=24)
     assert obter_status_usuario(EMAIL_ALICE) == "suspenso"
     assert contar_logs_moderacao(EMAIL_ALICE) >= 1
@@ -1075,28 +1054,23 @@ def test_fluxo_completo_trecho_procedures_e_papeis(driver):
 
     logout(driver)
 
-    # 11) Alice suspensa consegue logar, mas não consegue postar nem comentar.
     login(driver, EMAIL_ALICE, nome_evidencia="20_alice_suspensa_login")
     validar_suspenso_nao_publica_nem_comenta(driver, post_alice_interacao_id)
     logout(driver)
 
-    # 12) Moderador bane Alice.
     login(driver, EMAIL_MODERADOR, nome_evidencia="21_moderador_login_para_banir")
     banir_usuario_pelo_perfil(driver, "alice")
     assert obter_status_usuario(EMAIL_ALICE) == "banido"
     salvar_evidencia(driver, "22_moderador_baniu_alice")
     logout(driver)
 
-    # 13) Alice banida não consegue logar.
     login(driver, EMAIL_ALICE, sucesso=False, nome_evidencia="23_alice_banida_tenta_login")
     assert "banida" in driver.page_source.lower() or "banido" in driver.page_source.lower()
     salvar_evidencia(driver, "24_alice_banida_bloqueada_no_login")
 
-    # 14) Analista faz ações permitidas e não acessa áreas restritas.
     validar_analista(driver)
     logout(driver)
 
-    # 15) Admin acessa administração, reativa Alice e promove para moderadora.
     login(driver, EMAIL_ADMIN, nome_evidencia="25_admin_login")
 
     driver.get(f"{BASE_URL}/admin/")
@@ -1115,7 +1089,6 @@ def test_fluxo_completo_trecho_procedures_e_papeis(driver):
 
     logout(driver)
 
-    # 16) Alice, agora moderadora, faz uma ação real de moderação.
     post_pedro_moderacao_alice_id = criar_post_no_banco(EMAIL_USUARIO, post_pedro_moderacao_alice)
     criar_denuncia_no_banco(
         post_pedro_moderacao_alice_id,
@@ -1135,7 +1108,6 @@ def test_fluxo_completo_trecho_procedures_e_papeis(driver):
     assert obter_status_post(post_pedro_moderacao_alice_id) == "removido"
     salvar_evidencia(driver, "31_alice_promovida_removeu_post")
 
-    # Limpeza mínima para não deixar Alice como moderadora em próximos testes.
     definir_status_usuario(EMAIL_ALICE, "ativo", None, None)
     app = create_app()
     with app.app_context():

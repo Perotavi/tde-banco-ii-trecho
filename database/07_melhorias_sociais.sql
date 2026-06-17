@@ -2,9 +2,9 @@ USE rede_trecho;
 
 SET NAMES utf8mb4;
 
--- ============================================================
--- CAMPOS NOVOS NA TABELA usuarios
--- ============================================================
+
+-- Usuarios
+
 
 SET @existe_coluna = (
     SELECT COUNT(*)
@@ -101,9 +101,8 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 
--- ============================================================
--- TABELA DE BLOQUEIOS
--- ============================================================
+
+-- Tabela de bloqueios
 
 CREATE TABLE IF NOT EXISTS bloqueios (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -124,9 +123,9 @@ CREATE TABLE IF NOT EXISTS bloqueios (
 );
 
 
--- ============================================================
--- GARANTIR TABELA comentarios
--- ============================================================
+
+-- Tabela Comentarios
+
 
 CREATE TABLE IF NOT EXISTS comentarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -144,11 +143,6 @@ CREATE TABLE IF NOT EXISTS comentarios (
         FOREIGN KEY (usuario_id)
         REFERENCES usuarios(id)
 );
-
-
--- ============================================================
--- GARANTIR COLUNA status_comentario EM comentarios
--- ============================================================
 
 SET @existe_coluna = (
     SELECT COUNT(*)
@@ -169,9 +163,9 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 
--- ============================================================
--- GARANTIR TABELA notificacoes
--- ============================================================
+
+-- Tabela notificacoes
+
 
 CREATE TABLE IF NOT EXISTS notificacoes (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -202,16 +196,12 @@ CREATE TABLE IF NOT EXISTS notificacoes (
 );
 
 
--- ============================================================
--- PROCEDURES
--- ============================================================
+
+-- Procedures
 
 DELIMITER $$
 
-
--- ============================================================
 -- PROCEDURE: BLOQUEAR USUÁRIO
--- ============================================================
 
 DROP PROCEDURE IF EXISTS sp_bloquear_usuario $$
 
@@ -262,9 +252,7 @@ BEGIN
 END $$
 
 
--- ============================================================
 -- PROCEDURE: COMENTAR POST
--- ============================================================
 
 DROP PROCEDURE IF EXISTS sp_comentar_post $$
 
@@ -358,9 +346,7 @@ BEGIN
 END $$
 
 
--- ============================================================
 -- PROCEDURE: ATUALIZAR PERFIL
--- ============================================================
 
 DROP PROCEDURE IF EXISTS sp_atualizar_perfil_usuario $$
 
@@ -397,9 +383,7 @@ BEGIN
 END $$
 
 
--- ============================================================
 -- PROCEDURE: ALTERAR PERFIL DE USUÁRIO
--- ============================================================
 
 DROP PROCEDURE IF EXISTS sp_alterar_perfil_usuario $$
 
