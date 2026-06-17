@@ -470,15 +470,15 @@ def driver():
         options.set_preference("signon.autofillForms", False)
         navegador = webdriver.Firefox(options=options)
 
-    time.sleep(1)
+    time.sleep(2)
     yield navegador
-    time.sleep(1)
+    time.sleep(2)
     navegador.quit()
 
 
 # FUNÇÕES AUXILIARES DO SELENIUM
 
-def pausar(segundos=0.6):
+def pausar(segundos=2):
     time.sleep(segundos)
 
 
