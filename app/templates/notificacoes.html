@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Notificações - Trecho{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+    <h1>Notificações</h1>
+    <p>Acompanhe interações recebidas nos seus posts.</p>
+</section>
+
+{% if notificacoes %}
+    <div class="action-card">
+        <p><strong>Total de notificações:</strong> {{ notificacoes|length }}</p>
+
+        <form method="POST" action="{{ url_for('notificacoes.marcar_como_lidas') }}">
+            <button type="submit" class="button-link">
+                Marcar todas como lidas
+            </button>
+        </form>
+    </div>
+{% endif %}
+
+<section class="notifications-list-trecho">
+    {% for notificacao in notificacoes %}
+        <article class="notification-card-trecho {% if not notificacao.lida %}notification-unread-trecho{% endif %}">
+            <div class="notification-main-trecho">
+                <div class="notification-icon-trecho">
+                    {% if notificacao.tipo == 'curtida' %}
+                        ❤
+                    {% elif notificacao.tipo == 'comentario' %}
+                        💬
+                    {% else %}
+                        🔔
+                    {% endif %}
+                </div>
+
+                <div>
+                    <p>
+                        {% if notificacao.origem_username %}
+                            <strong>@{{ notificacao.origem_username }}</strong>
+                        {% endif %}
+
+                        {{ notificacao.mensagem }}
+                    </p>
+
+                    <span>{{ notificacao.data_criacao }}</span>
+
+                    {% if notificacao.post_id %}
+                        <a href="{{ url_for('posts.ver_post', post_id=notificacao.post_id) }}">
+                            Ver post
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if not notificacao.lida %}
+                <span class="notification-status-trecho">Nova</span>
+            {% endif %}
+        </article>
+    {% else %}
+        <div class="empty-state">
+            <p>Você ainda não possui notificações.</p>
+        </div>
+    {% endfor %}
+</section>
+
+{% endblock %}

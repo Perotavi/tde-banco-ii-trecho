@@ -3,92 +3,459 @@
 {% block title %}Feed - Trecho{% endblock %}
 
 {% block content %}
+{% set usuario_interativo = current_user.is_authenticated and current_user.tem_perfil('usuario', 'moderador', 'admin') %}
+{% set usuario_suspenso = usuario_interativo and current_user.status_conta == 'suspenso' %}
+{% set usuario_pode_publicar = usuario_interativo and current_user.status_conta == 'ativo' %}
 
 <section class="timeline-header">
     <div class="timeline-tabs">
         <button class="active">Feed</button>
-        <button>Notificações</button>
+
+        {% if current_user.is_authenticated %}
+            <button onclick="window.location.href='{{ url_for('notificacoes.listar_notificacoes') }}'">
+                Notificações
+            </button>
+        {% else %}
+            <button onclick="window.location.href='{{ url_for('auth.login') }}'">
+                Entrar
+            </button>
+        {% endif %}
     </div>
 </section>
 
-{% if current_user.is_authenticated and current_user.tem_perfil('usuario', 'moderador', 'admin') %}
-<section class="composer">
-    <div class="composer-avatar">
-        {{ current_user.nome[0] }}
-    </div>
+{% if usuario_interativo %}
+<section class="composer {% if usuario_suspenso %}composer-disabled-trecho{% endif %}">
+    <a href="{{ url_for('perfil.visualizar_perfil', username=current_user.username) }}" class="composer-avatar">
+        {% if current_user.foto_perfil_url %}
+            <img src="{{ current_user.foto_perfil_url }}" alt="Foto de perfil">
+        {% else %}
+            {{ current_user.nome[0] }}
+        {% endif %}
+    </a>
 
-    <form method="POST" action="{{ url_for('posts.criar_post_feed') }}" class="composer-body">
-        <textarea
-            name="conteudo"
-            class="composer-textarea"
-            id="campoPostFeed"
-            rows="3"
-            maxlength="280"
-            placeholder="Postar um trecho"
-            required
-        ></textarea>
+    {% if usuario_suspenso %}
+        <div class="composer-body">
+            <textarea
+                class="composer-textarea"
+                rows="3"
+                maxlength="280"
+                placeholder="Sua conta está suspensa"
+                disabled
+            ></textarea>
 
-        <div class="composer-footer">
-            <span class="composer-info">Compartilhe uma ideia curta com a rede</span>
+            <div class="composer-footer">
+                <span class="composer-info suspension-warning-trecho">
+                    Sua conta está suspensa{% if current_user.suspenso_ate %} até {{ current_user.suspenso_ate }}{% endif %}. Você não pode publicar nem comentar.
+                </span>
 
-            <button type="submit" class="composer-button" id="botaoPostarFeed" disabled>
-                Postar
-            </button>
+                <button type="button" class="composer-button" disabled>
+                    Postar
+                </button>
+            </div>
         </div>
-    </form>
+    {% else %}
+        <form method="POST" action="{{ url_for('posts.criar_post_feed') }}" class="composer-body">
+            <textarea
+                name="conteudo"
+                class="composer-textarea"
+                id="campoPostFeed"
+                rows="3"
+                maxlength="280"
+                placeholder="Postar um trecho"
+                required
+            ></textarea>
+
+            <div class="composer-footer">
+                <span class="composer-info">Compartilhe uma ideia curta com a rede</span>
+
+                <button type="submit" class="composer-button" id="botaoPostarFeed" disabled>
+                    Postar
+                </button>
+            </div>
+        </form>
+    {% endif %}
 </section>
 {% endif %}
 
 <section class="timeline-feed">
     {% for post in posts %}
         <article class="tweet-card">
-            <div class="tweet-avatar">
-                {{ post.autor_nome[0] }}
-            </div>
+            <a href="{{ url_for('perfil.visualizar_perfil', username=post.autor_username) }}" class="tweet-avatar">
+                {% if post.autor_foto_perfil_url %}
+                    <img src="{{ post.autor_foto_perfil_url }}" alt="Foto de {{ post.autor_nome }}">
+                {% else %}
+                    {{ post.autor_nome[0] }}
+                {% endif %}
+            </a>
 
             <div class="tweet-main">
                 <div class="tweet-top">
                     <div class="tweet-user-line">
-                        <strong>{{ post.autor_nome }}</strong>
-                        <span>@{{ post.autor_username }}</span>
+                        <a href="{{ url_for('perfil.visualizar_perfil', username=post.autor_username) }}">
+                            <strong>{{ post.autor_nome }}</strong>
+                        </a>
+
+                        <a href="{{ url_for('perfil.visualizar_perfil', username=post.autor_username) }}">
+                            <span>@{{ post.autor_username }}</span>
+                        </a>
+
                         <span>·</span>
                         <small>{{ post.data_publicacao }}</small>
                     </div>
 
-                    {% if current_user.is_authenticated and current_user.id != post.usuario_id %}
-                        <a href="{{ url_for('posts.denunciar_post', post_id=post.id) }}" class="tweet-more">
-                            ⋯
-                        </a>
+                    {% if current_user.is_authenticated %}
+                        <div class="dropdown-trecho">
+                            <button
+                                type="button"
+                                class="tweet-more"
+                                onclick="event.stopPropagation(); alternarMenuTresPontos('menu-post-{{ post.id }}')"
+                                aria-label="Abrir menu do post"
+                            >
+                                <span class="icon-svg icon-more"></span>
+                            </button>
+
+                            <div class="dropdown-menu-trecho" id="menu-post-{{ post.id }}">
+                                {% if current_user.id == post.usuario_id %}
+                                    <button
+                                        type="button"
+                                        onclick="abrirModalTrecho('modalEditarPost{{ post.id }}')"
+                                    >
+                                        Editar post
+                                    </button>
+                                {% else %}
+                                    {% if usuario_interativo %}
+                                        <button
+                                            type="button"
+                                            onclick="abrirModalTrecho('modalDenunciarPost{{ post.id }}')"
+                                        >
+                                            Denunciar post
+                                        </button>
+
+                                        <form method="POST" action="{{ url_for('posts.bloquear_usuario', usuario_id=post.usuario_id) }}">
+                                            <input type="hidden" name="origem" value="feed">
+
+                                            <button type="submit">
+                                                Bloquear usuário
+                                            </button>
+                                        </form>
+                                    {% endif %}
+
+                                    {% if current_user.tem_perfil('moderador', 'admin') %}
+                                        <form method="POST" action="{{ url_for('posts.remover_post_menu', post_id=post.id) }}">
+                                            <input type="hidden" name="origem" value="feed">
+                                            <input
+                                                type="hidden"
+                                                name="justificativa"
+                                                value="Post removido pelo menu de moderação."
+                                            >
+
+                                            <button type="submit" class="danger-option">
+                                                Excluir post
+                                            </button>
+                                        </form>
+
+                                        <button
+                                            type="button"
+                                            onclick="abrirModalTrecho('modalSuspenderUsuario{{ post.id }}')"
+                                        >
+                                            Suspender usuário
+                                        </button>
+
+                                        <form method="POST" action="{{ url_for('posts.alterar_status_usuario_menu', usuario_id=post.usuario_id, novo_status='banido') }}">
+                                            <input type="hidden" name="origem" value="feed">
+                                            <input
+                                                type="hidden"
+                                                name="justificativa"
+                                                value="Usuário banido pelo menu de moderação."
+                                            >
+
+                                            <button type="submit" class="danger-option">
+                                                Banir usuário
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
                     {% endif %}
                 </div>
 
-                <div class="tweet-content">
-                    <p>{{ post.conteudo }}</p>
-                </div>
+                <a href="{{ url_for('posts.ver_post', post_id=post.id) }}" class="tweet-click-area">
+                    <div class="tweet-content">
+                        <p>{{ post.conteudo }}</p>
+                    </div>
+                </a>
 
                 <div class="tweet-actions">
-                    <span>💬 {{ post.total_comentarios }}</span>
+                    {% if usuario_interativo %}
+                        {% if usuario_suspenso %}
+                            <button
+                                type="button"
+                                class="tweet-action-button disabled-action-trecho"
+                                disabled
+                                title="Sua conta está suspensa. Você não pode comentar."
+                                aria-label="Comentar bloqueado"
+                            >
+                                <span class="icon-svg icon-comment"></span>
+                                <span>{{ post.total_comentarios }}</span>
+                            </button>
+                        {% else %}
+                            <button
+                                type="button"
+                                class="tweet-action-button"
+                                onclick="abrirModalTrecho('modalComentarPost{{ post.id }}')"
+                                aria-label="Comentar"
+                            >
+                                <span class="icon-svg icon-comment"></span>
+                                <span>{{ post.total_comentarios }}</span>
+                            </button>
+                        {% endif %}
+                    {% else %}
+                        <button
+                            type="button"
+                            class="tweet-action-button"
+                            onclick="abrirModalLoginNecessario()"
+                            aria-label="Comentar"
+                        >
+                            <span class="icon-svg icon-comment"></span>
+                            <span>{{ post.total_comentarios }}</span>
+                        </button>
+                    {% endif %}
 
-                    {% if current_user.is_authenticated and current_user.tem_perfil('usuario', 'moderador', 'admin') %}
+                    {% if usuario_interativo %}
                         <form method="POST" action="{{ url_for('posts.curtir_post', post_id=post.id) }}" class="like-form">
-                            <button type="submit" class="like-button {% if post.usuario_curtiu %}liked{% endif %}">
+                            <input type="hidden" name="origem" value="feed">
+
+                            <button
+                                type="submit"
+                                class="like-button {% if post.usuario_curtiu %}liked{% endif %}"
+                                aria-label="Curtir"
+                            >
                                 {% if post.usuario_curtiu %}
-                                    ❤ {{ post.total_curtidas }}
+                                    <span class="icon-svg icon-heart-filled"></span>
                                 {% else %}
-                                    ♡ {{ post.total_curtidas }}
+                                    <span class="icon-svg icon-heart"></span>
                                 {% endif %}
+                                <span>{{ post.total_curtidas }}</span>
                             </button>
                         </form>
                     {% else %}
-                        <span>❤ {{ post.total_curtidas }}</span>
-                    {% endif %}
-
-                    {% if current_user.is_authenticated and current_user.id != post.usuario_id %}
-                        <a href="{{ url_for('posts.denunciar_post', post_id=post.id) }}">Denunciar</a>
+                        <button
+                            type="button"
+                            class="like-button"
+                            onclick="abrirModalLoginNecessario()"
+                            aria-label="Curtir"
+                        >
+                            <span class="icon-svg icon-heart"></span>
+                            <span>{{ post.total_curtidas }}</span>
+                        </button>
                     {% endif %}
                 </div>
             </div>
         </article>
+
+        {% if usuario_interativo and not usuario_suspenso %}
+            <div class="modal-overlay" id="modalComentarPost{{ post.id }}">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h2>Responder trecho</h2>
+
+                        <button
+                            type="button"
+                            class="modal-close"
+                            onclick="fecharModalTrecho('modalComentarPost{{ post.id }}')"
+                            aria-label="Fechar"
+                        >
+                            <span class="icon-svg icon-x"></span>
+                        </button>
+                    </div>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('posts.comentar_post', post_id=post.id) }}"
+                        class="modal-form modal-form-compacta"
+                    >
+                        <input type="hidden" name="origem" value="feed">
+
+                        <p>
+                            Respondendo ao post de
+                            <strong>@{{ post.autor_username }}</strong>
+                        </p>
+
+                        <textarea
+                            name="conteudo"
+                            rows="4"
+                            maxlength="280"
+                            placeholder="Postar sua resposta"
+                            required
+                        ></textarea>
+
+                        <div class="modal-footer">
+                            <span>Máximo de 280 caracteres</span>
+
+                            <button type="submit">
+                                Responder
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if usuario_interativo and current_user.id == post.usuario_id %}
+            <div class="modal-overlay" id="modalEditarPost{{ post.id }}">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h2>Editar post</h2>
+
+                        <button
+                            type="button"
+                            class="modal-close"
+                            onclick="fecharModalTrecho('modalEditarPost{{ post.id }}')"
+                            aria-label="Fechar"
+                        >
+                            <span class="icon-svg icon-x"></span>
+                        </button>
+                    </div>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('posts.editar_post', post_id=post.id) }}"
+                        class="modal-form modal-form-compacta"
+                    >
+                        <input type="hidden" name="origem" value="feed">
+
+                        <textarea
+                            name="conteudo"
+                            rows="4"
+                            maxlength="280"
+                            required
+                        >{{ post.conteudo }}</textarea>
+
+                        <div class="modal-footer">
+                            <span>Máximo de 280 caracteres</span>
+
+                            <button type="submit">
+                                Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if usuario_interativo and current_user.id != post.usuario_id %}
+            <div class="modal-overlay" id="modalDenunciarPost{{ post.id }}">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h2>Denunciar post</h2>
+
+                        <button
+                            type="button"
+                            class="modal-close"
+                            onclick="fecharModalTrecho('modalDenunciarPost{{ post.id }}')"
+                            aria-label="Fechar"
+                        >
+                            <span class="icon-svg icon-x"></span>
+                        </button>
+                    </div>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('posts.denunciar_post', post_id=post.id) }}"
+                        class="modal-form modal-form-compacta"
+                    >
+                        <input type="hidden" name="origem" value="feed">
+
+                        <p>
+                            Informe o motivo da denúncia para que a moderação possa analisar este conteúdo.
+                        </p>
+
+                        <div class="modal-post-preview">
+                            <strong>@{{ post.autor_username }}</strong>
+                            <p>{{ post.conteudo }}</p>
+                        </div>
+
+                        <label for="motivo_denuncia_{{ post.id }}">Motivo da denúncia</label>
+                        <textarea
+                            id="motivo_denuncia_{{ post.id }}"
+                            name="motivo"
+                            rows="4"
+                            maxlength="255"
+                            placeholder="Explique o motivo da denúncia..."
+                            required
+                        ></textarea>
+
+                        <div class="modal-footer">
+                            <span>Essa denúncia será enviada para a moderação.</span>
+
+                            <button type="submit" class="danger-button">
+                                Enviar denúncia
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if current_user.is_authenticated and current_user.tem_perfil('moderador', 'admin') and current_user.id != post.usuario_id %}
+            <div class="modal-overlay" id="modalSuspenderUsuario{{ post.id }}">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h2>Suspender usuário</h2>
+
+                        <button
+                            type="button"
+                            class="modal-close"
+                            onclick="fecharModalTrecho('modalSuspenderUsuario{{ post.id }}')"
+                            aria-label="Fechar"
+                        >
+                            <span class="icon-svg icon-x"></span>
+                        </button>
+                    </div>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('posts.alterar_status_usuario_menu', usuario_id=post.usuario_id, novo_status='suspenso') }}"
+                        class="modal-form modal-form-compacta"
+                    >
+                        <input type="hidden" name="origem" value="feed">
+
+                        <p>
+                            Você está suspendendo
+                            <strong>@{{ post.autor_username }}</strong>.
+                        </p>
+
+                        <label for="duracao_horas_{{ post.id }}">Tempo de suspensão em horas</label>
+                        <input
+                            type="number"
+                            id="duracao_horas_{{ post.id }}"
+                            name="duracao_horas"
+                            min="1"
+                            value="24"
+                            required
+                        >
+
+                        <label for="justificativa_suspensao_{{ post.id }}">Justificativa</label>
+                        <textarea
+                            id="justificativa_suspensao_{{ post.id }}"
+                            name="justificativa"
+                            rows="3"
+                            maxlength="255"
+                            required
+                        >Usuário suspenso pelo menu de moderação.</textarea>
+
+                        <div class="modal-footer">
+                            <span>Essa ação será registrada nos logs.</span>
+
+                            <button type="submit" class="danger-button">
+                                Suspender
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
     {% else %}
         <div class="empty-state" style="margin: 16px;">
             <p>Nenhum post encontrado.</p>

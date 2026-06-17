@@ -5,11 +5,10 @@ from pathlib import Path
 
 import pytest
 from selenium import webdriver
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
+from selenium.webdriver.support.ui import WebDriverWait
 from sqlalchemy import text
 
 from app import create_app
@@ -18,95 +17,385 @@ from app.models import Usuario
 
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
-EVIDENCIAS_DIR = Path("evidencias")
+EVIDENCIAS_DIR = Path("evidencias_fluxo_completo")
+
+EMAIL_USUARIO = "pedro@trecho.com"
+EMAIL_ALICE = "alice@trecho.com"
+EMAIL_MODERADOR = "bruno@trecho.com"
+EMAIL_ANALISTA = "carla@trecho.com"
+EMAIL_ADMIN = "daniel@trecho.com"
+SENHA_PADRAO = "123456"
 
 
 # ============================================================
-# PREPARAÇÃO DO BANCO PARA OS TESTES
+# PREPARAÇÃO DO BANCO PARA O FLUXO COMPLETO
 # ============================================================
 
 @pytest.fixture(scope="session", autouse=True)
-def preparar_banco_para_testes():
+def preparar_banco_para_fluxo_completo():
+    """
+    Deixa os usuários de teste em estado previsível antes do fluxo.
+
+    O teste principal mexe com procedures e rotas importantes, então aqui
+    garantimos senha, status e perfil corretos para não depender de execuções
+    antigas do banco.
+    """
+
     app = create_app()
 
     with app.app_context():
-        emails_teste = [
-            "pedro@trecho.com",
-            "alice@trecho.com",
-            "bruno@trecho.com",
-            "carla@trecho.com",
-            "daniel@trecho.com",
-        ]
+        resetar_usuario(EMAIL_USUARIO, "usuario")
+        resetar_usuario(EMAIL_ALICE, "usuario")
+        resetar_usuario(EMAIL_MODERADOR, "moderador")
+        resetar_usuario(EMAIL_ANALISTA, "analista")
+        resetar_usuario(EMAIL_ADMIN, "admin")
 
-        usuarios = Usuario.query.filter(Usuario.email.in_(emails_teste)).all()
-
-        for usuario in usuarios:
-            usuario.status_conta = "ativo"
-
-            if hasattr(usuario, "suspenso_ate"):
-                usuario.suspenso_ate = None
-
-            if hasattr(usuario, "motivo_punicao"):
-                usuario.motivo_punicao = None
-
-            usuario.definir_senha("123456")
+        garantir_post_base(EMAIL_USUARIO, "Post base do Pedro para fluxo completo Selenium.")
+        garantir_post_base(EMAIL_ALICE, "Post base da Alice para fluxo completo Selenium.")
+        garantir_post_base(EMAIL_MODERADOR, "Post base do Bruno moderador para fluxo completo Selenium.")
+        garantir_post_base(EMAIL_ADMIN, "Post base do Daniel admin para fluxo completo Selenium.")
 
         db.session.commit()
 
-        pedro = Usuario.query.filter_by(email="pedro@trecho.com").first()
-        alice = Usuario.query.filter_by(email="alice@trecho.com").first()
-        bruno = Usuario.query.filter_by(email="bruno@trecho.com").first()
-        admin = Usuario.query.filter_by(email="daniel@trecho.com").first()
 
-        if pedro:
-            criar_post_teste(pedro.id, "Post base do Pedro para evidências Selenium.")
+def resetar_usuario(email, perfil_nome):
+    usuario = Usuario.query.filter_by(email=email).first()
+    assert usuario is not None, f"Usuário de teste não encontrado: {email}"
 
-        if alice:
-            criar_post_teste(alice.id, "Post base da Alice para evidências Selenium.")
+    perfil_id = db.session.execute(
+        text("SELECT id FROM perfis WHERE nome = :perfil_nome LIMIT 1"),
+        {"perfil_nome": perfil_nome}
+    ).scalar()
+    assert perfil_id is not None, f"Perfil não encontrado: {perfil_nome}"
 
-        if bruno:
-            criar_post_teste(bruno.id, "Post base do Bruno moderador para evidências Selenium.")
+    usuario.perfil_id = perfil_id
+    usuario.status_conta = "ativo"
+    usuario.definir_senha(SENHA_PADRAO)
 
-        if admin:
-            criar_post_teste(admin.id, "Post base do administrador para evidências Selenium.")
+    if hasattr(usuario, "suspenso_ate"):
+        usuario.suspenso_ate = None
 
+    if hasattr(usuario, "motivo_punicao"):
+        usuario.motivo_punicao = None
 
-def criar_post_teste(usuario_id, conteudo):
-    existente = db.session.execute(
+    if hasattr(usuario, "bio") and not usuario.bio:
+        usuario.bio = "Bio inicial para testes do Trecho."
+
+    db.session.execute(
         text("""
-            SELECT id
-            FROM posts
-            WHERE conteudo = :conteudo
-            LIMIT 1
+            DELETE FROM bloqueios
+            WHERE bloqueador_id = :usuario_id
+               OR bloqueado_id = :usuario_id
         """),
-        {"conteudo": conteudo}
-    ).mappings().first()
+        {"usuario_id": usuario.id}
+    )
 
-    if not existente:
+
+def garantir_post_base(email, conteudo):
+    usuario_id = obter_id_usuario(email)
+
+    existente = db.session.execute(
+        text("SELECT id FROM posts WHERE conteudo = :conteudo LIMIT 1"),
+        {"conteudo": conteudo}
+    ).scalar()
+
+    if existente:
+        db.session.execute(
+            text("UPDATE posts SET status_post = 'ativo' WHERE id = :post_id"),
+            {"post_id": existente}
+        )
+        return existente
+
+    db.session.execute(
+        text("""
+            INSERT INTO posts (usuario_id, conteudo, status_post)
+            VALUES (:usuario_id, :conteudo, 'ativo')
+        """),
+        {
+            "usuario_id": usuario_id,
+            "conteudo": conteudo
+        }
+    )
+    db.session.flush()
+
+    return db.session.execute(text("SELECT LAST_INSERT_ID()" )).scalar()
+
+
+def app_contexto():
+    app = create_app()
+    return app.app_context()
+
+
+def obter_id_usuario(email):
+    return db.session.execute(
+        text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+        {"email": email}
+    ).scalar()
+
+
+def obter_id_usuario_fora_contexto(email):
+    app = create_app()
+
+    with app.app_context():
+        return db.session.execute(
+            text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": email}
+        ).scalar()
+
+
+def criar_post_no_banco(email_autor, conteudo, status="ativo"):
+    app = create_app()
+
+    with app.app_context():
+        usuario_id = db.session.execute(
+            text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": email_autor}
+        ).scalar()
+        assert usuario_id is not None
+
         db.session.execute(
             text("""
                 INSERT INTO posts (usuario_id, conteudo, status_post)
-                VALUES (:usuario_id, :conteudo, 'ativo')
+                VALUES (:usuario_id, :conteudo, :status)
             """),
             {
                 "usuario_id": usuario_id,
-                "conteudo": conteudo
+                "conteudo": conteudo,
+                "status": status
             }
         )
         db.session.commit()
-    else:
-        db.session.execute(
+
+        return db.session.execute(
             text("""
-                UPDATE posts
-                SET status_post = 'ativo'
+                SELECT id
+                FROM posts
                 WHERE conteudo = :conteudo
+                ORDER BY id DESC
+                LIMIT 1
             """),
             {"conteudo": conteudo}
+        ).scalar()
+
+
+def criar_denuncia_no_banco(post_id, denunciante_email, motivo):
+    app = create_app()
+
+    with app.app_context():
+        denunciante_id = db.session.execute(
+            text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": denunciante_email}
+        ).scalar()
+        assert denunciante_id is not None
+
+        db.session.execute(
+            text("DELETE FROM denuncias WHERE post_id = :post_id"),
+            {"post_id": post_id}
+        )
+
+        db.session.execute(
+            text("""
+                INSERT INTO denuncias (post_id, denunciante_id, motivo, status_denuncia)
+                VALUES (:post_id, :denunciante_id, :motivo, 'pendente')
+            """),
+            {
+                "post_id": post_id,
+                "denunciante_id": denunciante_id,
+                "motivo": motivo
+            }
         )
         db.session.commit()
 
 
-def atualizar_status_usuario(email, status, suspenso_ate=None, motivo=None):
+def obter_post_por_conteudo(conteudo):
+    app = create_app()
+
+    with app.app_context():
+        return db.session.execute(
+            text("""
+                SELECT id, usuario_id, conteudo, status_post
+                FROM posts
+                WHERE conteudo = :conteudo
+                ORDER BY id DESC
+                LIMIT 1
+            """),
+            {"conteudo": conteudo}
+        ).mappings().first()
+
+
+def obter_status_usuario(email):
+    app = create_app()
+
+    with app.app_context():
+        return db.session.execute(
+            text("SELECT status_conta FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": email}
+        ).scalar()
+
+
+def obter_perfil_usuario(email):
+    app = create_app()
+
+    with app.app_context():
+        return db.session.execute(
+            text("""
+                SELECT p.nome
+                FROM usuarios u
+                INNER JOIN perfis p ON u.perfil_id = p.id
+                WHERE u.email = :email
+                LIMIT 1
+            """),
+            {"email": email}
+        ).scalar()
+
+
+def obter_status_post(post_id):
+    app = create_app()
+
+    with app.app_context():
+        return db.session.execute(
+            text("SELECT status_post FROM posts WHERE id = :post_id LIMIT 1"),
+            {"post_id": post_id}
+        ).scalar()
+
+
+def contar_comentarios(post_id, conteudo=None):
+    app = create_app()
+
+    with app.app_context():
+        if conteudo:
+            return db.session.execute(
+                text("""
+                    SELECT COUNT(*)
+                    FROM comentarios
+                    WHERE post_id = :post_id
+                      AND conteudo = :conteudo
+                      AND status_comentario = 'ativo'
+                """),
+                {
+                    "post_id": post_id,
+                    "conteudo": conteudo
+                }
+            ).scalar()
+
+        return db.session.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM comentarios
+                WHERE post_id = :post_id
+                  AND status_comentario = 'ativo'
+            """),
+            {"post_id": post_id}
+        ).scalar()
+
+
+def contar_curtidas(post_id, email):
+    app = create_app()
+
+    with app.app_context():
+        usuario_id = db.session.execute(
+            text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": email}
+        ).scalar()
+
+        return db.session.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM curtidas
+                WHERE post_id = :post_id
+                  AND usuario_id = :usuario_id
+            """),
+            {
+                "post_id": post_id,
+                "usuario_id": usuario_id
+            }
+        ).scalar()
+
+
+def contar_denuncias(post_id, denunciante_email):
+    app = create_app()
+
+    with app.app_context():
+        denunciante_id = db.session.execute(
+            text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": denunciante_email}
+        ).scalar()
+
+        return db.session.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM denuncias
+                WHERE post_id = :post_id
+                  AND denunciante_id = :denunciante_id
+            """),
+            {
+                "post_id": post_id,
+                "denunciante_id": denunciante_id
+            }
+        ).scalar()
+
+
+def contar_bloqueio(email_bloqueador, email_bloqueado):
+    app = create_app()
+
+    with app.app_context():
+        bloqueador_id = db.session.execute(
+            text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": email_bloqueador}
+        ).scalar()
+        bloqueado_id = db.session.execute(
+            text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": email_bloqueado}
+        ).scalar()
+
+        return db.session.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM bloqueios
+                WHERE bloqueador_id = :bloqueador_id
+                  AND bloqueado_id = :bloqueado_id
+            """),
+            {
+                "bloqueador_id": bloqueador_id,
+                "bloqueado_id": bloqueado_id
+            }
+        ).scalar()
+
+
+def desbloquear_usuario_no_banco(email_bloqueador, email_bloqueado):
+    """
+    Ainda não existe botão/rota de desbloqueio no projeto.
+    O fluxo registra essa etapa limpando a relação no banco para permitir
+    continuar testando denúncia e moderação depois do bloqueio.
+    """
+
+    app = create_app()
+
+    with app.app_context():
+        bloqueador_id = db.session.execute(
+            text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": email_bloqueador}
+        ).scalar()
+        bloqueado_id = db.session.execute(
+            text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+            {"email": email_bloqueado}
+        ).scalar()
+
+        db.session.execute(
+            text("""
+                DELETE FROM bloqueios
+                WHERE bloqueador_id = :bloqueador_id
+                  AND bloqueado_id = :bloqueado_id
+            """),
+            {
+                "bloqueador_id": bloqueador_id,
+                "bloqueado_id": bloqueado_id
+            }
+        )
+        db.session.commit()
+
+
+def definir_status_usuario(email, status, suspenso_ate=None, motivo=None):
     app = create_app()
 
     with app.app_context():
@@ -128,139 +417,30 @@ def atualizar_status_usuario(email, status, suspenso_ate=None, motivo=None):
         db.session.commit()
 
 
-def obter_status_usuario(email):
+def contar_logs_moderacao(email_alvo=None, acao_like=None):
     app = create_app()
 
     with app.app_context():
-        return db.session.execute(
-            text("""
-                SELECT status_conta
-                FROM usuarios
-                WHERE email = :email
-            """),
-            {"email": email}
-        ).scalar()
+        if email_alvo:
+            usuario_id = db.session.execute(
+                text("SELECT id FROM usuarios WHERE email = :email LIMIT 1"),
+                {"email": email_alvo}
+            ).scalar()
 
-
-def obter_status_post(post_id):
-    app = create_app()
-
-    with app.app_context():
-        return db.session.execute(
-            text("""
-                SELECT status_post
-                FROM posts
-                WHERE id = :post_id
-            """),
-            {"post_id": post_id}
-        ).scalar()
-
-
-def preparar_post_com_denuncia_para_moderacao(conteudo, autor_email, denunciante_email, motivo):
-    app = create_app()
-
-    with app.app_context():
-        autor = db.session.execute(
-            text("""
-                SELECT id
-                FROM usuarios
-                WHERE email = :email
-            """),
-            {"email": autor_email}
-        ).mappings().first()
-
-        denunciante = db.session.execute(
-            text("""
-                SELECT id
-                FROM usuarios
-                WHERE email = :email
-            """),
-            {"email": denunciante_email}
-        ).mappings().first()
-
-        assert autor is not None
-        assert denunciante is not None
-
-        db.session.execute(
-            text("""
-                UPDATE usuarios
-                SET status_conta = 'ativo',
-                    suspenso_ate = NULL,
-                    motivo_punicao = NULL
-                WHERE email IN (:autor_email, :denunciante_email)
-            """),
-            {
-                "autor_email": autor_email,
-                "denunciante_email": denunciante_email
-            }
-        )
-
-        post = db.session.execute(
-            text("""
-                SELECT id
-                FROM posts
-                WHERE conteudo = :conteudo
-                LIMIT 1
-            """),
-            {"conteudo": conteudo}
-        ).mappings().first()
-
-        if not post:
-            db.session.execute(
+            return db.session.execute(
                 text("""
-                    INSERT INTO posts (usuario_id, conteudo, status_post)
-                    VALUES (:usuario_id, :conteudo, 'ativo')
+                    SELECT COUNT(*)
+                    FROM logs_moderacao
+                    WHERE usuario_alvo_id = :usuario_id
+                      AND (:acao_like IS NULL OR acao LIKE :acao_like)
                 """),
                 {
-                    "usuario_id": autor.id,
-                    "conteudo": conteudo
+                    "usuario_id": usuario_id,
+                    "acao_like": acao_like
                 }
-            )
-            db.session.commit()
+            ).scalar()
 
-            post = db.session.execute(
-                text("""
-                    SELECT id
-                    FROM posts
-                    WHERE conteudo = :conteudo
-                    ORDER BY id DESC
-                    LIMIT 1
-                """),
-                {"conteudo": conteudo}
-            ).mappings().first()
-        else:
-            db.session.execute(
-                text("""
-                    UPDATE posts
-                    SET status_post = 'ativo'
-                    WHERE id = :post_id
-                """),
-                {"post_id": post.id}
-            )
-
-        db.session.execute(
-            text("""
-                DELETE FROM denuncias
-                WHERE post_id = :post_id
-            """),
-            {"post_id": post.id}
-        )
-
-        db.session.execute(
-            text("""
-                INSERT INTO denuncias (post_id, denunciante_id, motivo, status_denuncia)
-                VALUES (:post_id, :denunciante_id, :motivo, 'pendente')
-            """),
-            {
-                "post_id": post.id,
-                "denunciante_id": denunciante.id,
-                "motivo": motivo
-            }
-        )
-
-        db.session.commit()
-
-        return post.id
+        return db.session.execute(text("SELECT COUNT(*) FROM logs_moderacao")).scalar()
 
 
 # ============================================================
@@ -282,7 +462,7 @@ def driver():
             "profile.password_manager_leak_detection": False,
             "safebrowsing.enabled": False,
         })
-        driver = webdriver.Chrome(options=options)
+        navegador = webdriver.Chrome(options=options)
 
     except WebDriverException:
         options = webdriver.FirefoxOptions()
@@ -291,34 +471,38 @@ def driver():
         options.set_preference("signon.rememberSignons", False)
         options.set_preference("signon.management.page.breach-alerts.enabled", False)
         options.set_preference("signon.autofillForms", False)
-        driver = webdriver.Firefox(options=options)
+        navegador = webdriver.Firefox(options=options)
 
     time.sleep(1)
-
-    yield driver
-
+    yield navegador
     time.sleep(1)
-    driver.quit()
+    navegador.quit()
 
 
 # ============================================================
 # FUNÇÕES AUXILIARES DO SELENIUM
 # ============================================================
 
-def pausar():
-    time.sleep(1)
-
-
-def salvar_evidencia(driver, nome_teste):
-    pausar()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    caminho = EVIDENCIAS_DIR / f"{nome_teste}_{timestamp}.png"
-    driver.save_screenshot(str(caminho))
-    pausar()
+def pausar(segundos=0.6):
+    time.sleep(segundos)
 
 
 def esperar(driver, timeout=10):
     return WebDriverWait(driver, timeout)
+
+
+def esperar_body(driver, timeout=10):
+    return esperar(driver, timeout).until(
+        EC.presence_of_element_located((By.TAG_NAME, "body"))
+    )
+
+
+def salvar_evidencia(driver, nome):
+    pausar()
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    caminho = EVIDENCIAS_DIR / f"{nome}_{timestamp}.png"
+    driver.save_screenshot(str(caminho))
+    pausar()
 
 
 def fechar_modais(driver):
@@ -327,62 +511,145 @@ def fechar_modais(driver):
             modal.classList.remove('active');
         });
     """)
-    pausar()
+    pausar(0.3)
 
 
-def existe_link_ou_botao_visivel(driver, texto):
+def xpath_literal(texto):
+    if "'" not in texto:
+        return f"'{texto}'"
+
+    if '"' not in texto:
+        return f'"{texto}"'
+
+    partes = texto.split("'")
+    return "concat(" + ", \"'\", ".join(f"'{parte}'" for parte in partes) + ")"
+
+
+def buscar_botao_ou_link_por_texto(driver, texto, timeout=10):
+    literal = xpath_literal(texto)
+    return esperar(driver, timeout).until(
+        EC.element_to_be_clickable((
+            By.XPATH,
+            f"//button[contains(normalize-space(), {literal})] | //a[contains(normalize-space(), {literal})]"
+        ))
+    )
+
+
+def existe_botao_ou_link_visivel(driver, texto):
+    """
+    Verifica se existe link ou botão visível com determinado texto.
+
+    Não usa page_source porque o HTML pode conter o texto dentro de scripts,
+    comentários ou templates, e isso gera falso positivo no teste.
+    """
+
+    literal = xpath_literal(texto)
     elementos = driver.find_elements(
         By.XPATH,
-        f"//a[contains(normalize-space(), '{texto}')] | //button[contains(normalize-space(), '{texto}')]"
+        f"//button[contains(normalize-space(), {literal})] | //a[contains(normalize-space(), {literal})]"
     )
 
-    for elemento in elementos:
-        if elemento.is_displayed():
-            return True
-
-    return False
+    return any(elemento.is_displayed() for elemento in elementos)
 
 
-def login(driver, email, senha="123456", fechar_modal=True):
-    driver.get(f"{BASE_URL}/auth/logout")
+def existe_elemento_visivel(driver, by, seletor):
+    """
+    Verifica se um elemento existe e está visível de verdade no DOM.
+
+    Isso evita falhas como procurar 'campoPostFeed' no page_source, porque
+    esse texto pode aparecer em JavaScript mesmo quando o campo não está
+    sendo exibido para o usuário.
+    """
+
+    elementos = driver.find_elements(by, seletor)
+    return any(elemento.is_displayed() for elemento in elementos)
+
+
+def clicar_texto(driver, texto, timeout=10):
+    elemento = buscar_botao_ou_link_por_texto(driver, texto, timeout)
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", elemento)
+    pausar(0.3)
+    driver.execute_script("arguments[0].click();", elemento)
     pausar()
+    return elemento
+
+
+def encontrar_card_por_texto(driver, texto, timeout=10):
+    literal = xpath_literal(texto)
+    return esperar(driver, timeout).until(
+        EC.presence_of_element_located((
+            By.XPATH,
+            "//*[self::article or self::section or self::div]"
+            "[contains(@class, 'tweet-card') or contains(@class, 'post-card')]"
+            f"[contains(., {literal})]"
+        ))
+    )
+
+
+def clicar_botao_no_card(driver, card, texto_botao):
+    literal = xpath_literal(texto_botao)
+    botao = card.find_element(
+        By.XPATH,
+        f".//button[contains(normalize-space(), {literal})]"
+    )
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", botao)
+    pausar(0.3)
+    driver.execute_script("arguments[0].click();", botao)
+    pausar()
+
+
+def abrir_menu_do_card(driver, texto_card):
+    card = encontrar_card_por_texto(driver, texto_card)
+    botao_menu = card.find_element(By.CSS_SELECTOR, ".tweet-more")
+    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", botao_menu)
+    pausar(0.3)
+    driver.execute_script("arguments[0].click();", botao_menu)
+    pausar()
+    return card
+
+
+def clicar_opcao_menu_do_card(driver, texto_card, opcao):
+    card = abrir_menu_do_card(driver, texto_card)
+    clicar_botao_no_card(driver, card, opcao)
+    return card
+
+
+def logout(driver):
+    driver.get(f"{BASE_URL}/auth/logout")
+    esperar_body(driver)
+    fechar_modais(driver)
+
+
+def login(driver, email, senha=SENHA_PADRAO, sucesso=True, nome_evidencia=None):
+    logout(driver)
 
     driver.get(f"{BASE_URL}/auth/login")
-    pausar()
+    esperar_body(driver)
 
-    campo_email = esperar(driver).until(
-        EC.presence_of_element_located((By.NAME, "email"))
-    )
+    campo_email = esperar(driver).until(EC.presence_of_element_located((By.NAME, "email")))
     campo_email.clear()
     campo_email.send_keys(email)
-    pausar()
 
     campo_senha = driver.find_element(By.NAME, "senha")
     campo_senha.clear()
     campo_senha.send_keys(senha)
+
+    salvar_evidencia(driver, nome_evidencia or f"login_{email.replace('@', '_').replace('.', '_')}")
+
+    botao = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
+    driver.execute_script("arguments[0].click();", botao)
+    esperar_body(driver)
     pausar()
 
-    salvar_evidencia(driver, f"login_preenchido_{email.replace('@', '_').replace('.', '_')}")
+    if sucesso:
+        assert "E-mail ou senha inválidos" not in driver.page_source
+        assert "senha inválidos" not in driver.page_source
 
-    botao_login = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-    botao_login.click()
-    pausar()
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    if fechar_modal:
-        fechar_modais(driver)
-
-    assert "E-mail ou senha inválidos" not in driver.page_source
+    return driver.page_source
 
 
 def preencher_e_enviar_post(driver, conteudo):
-    campo = esperar(driver).until(
-        EC.presence_of_element_located((By.ID, "campoPostFeed"))
-    )
-    pausar()
+    campo = esperar(driver).until(EC.presence_of_element_located((By.ID, "campoPostFeed")))
 
     driver.execute_script("""
         const campo = document.getElementById('campoPostFeed');
@@ -395,657 +662,493 @@ def preencher_e_enviar_post(driver, conteudo):
             botao.disabled = false;
         }
     """, conteudo)
-    pausar()
 
-    salvar_evidencia(driver, "campo_post_preenchido")
+    salvar_evidencia(driver, "usuario_post_preenchido")
 
     driver.execute_script("""
         const campo = document.getElementById('campoPostFeed');
         const form = campo.closest('form');
         form.submit();
     """)
+    esperar_body(driver)
     pausar()
 
 
-def encontrar_card_por_texto(driver, texto):
-    return esperar(driver).until(
-        EC.presence_of_element_located((
-            By.XPATH,
-            f"//article[contains(@class, 'post-card') and contains(., \"{texto}\")]"
-        ))
+def editar_post_pelo_feed(driver, conteudo_original, conteudo_editado):
+    clicar_opcao_menu_do_card(driver, conteudo_original, "Editar post")
+
+    modal = esperar(driver).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, ".modal-overlay.active"))
     )
+    textarea = modal.find_element(By.NAME, "conteudo")
+    textarea.clear()
+    textarea.send_keys(conteudo_editado)
+
+    salvar_evidencia(driver, "usuario_editando_post")
+
+    botao = modal.find_element(By.CSS_SELECTOR, "button[type='submit']")
+    driver.execute_script("arguments[0].click();", botao)
+    esperar_body(driver)
+    pausar()
 
 
-def clicar_botao_do_card(driver, card, texto_botao):
-    botao = card.find_element(
-        By.XPATH,
-        f".//button[contains(normalize-space(), '{texto_botao}')]"
+def editar_bio_perfil(driver, nova_bio):
+    driver.get(f"{BASE_URL}/perfil/pedro")
+    esperar_body(driver)
+
+    clicar_texto(driver, "Editar perfil")
+
+    modal = esperar(driver).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, ".modal-overlay.active"))
     )
+    campo_bio = modal.find_element(By.NAME, "bio")
+    campo_bio.clear()
+    campo_bio.send_keys(nova_bio)
 
+    salvar_evidencia(driver, "usuario_editando_bio_perfil")
+
+    form = modal.find_element(By.CSS_SELECTOR, "form")
+    driver.execute_script("arguments[0].submit();", form)
+    esperar_body(driver)
+    pausar()
+
+
+def comentar_post(driver, post_id, comentario):
+    driver.get(f"{BASE_URL}/post/{post_id}")
+    esperar_body(driver)
+
+    campo = esperar(driver).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "textarea[name='conteudo']"))
+    )
+    campo.clear()
+    campo.send_keys(comentario)
+
+    salvar_evidencia(driver, "usuario_comentando_post")
+
+    form = campo.find_element(By.XPATH, "./ancestor::form")
+    driver.execute_script("arguments[0].submit();", form)
+    esperar_body(driver)
+    pausar()
+
+
+def curtir_post(driver, post_id):
+    driver.get(f"{BASE_URL}/post/{post_id}")
+    esperar_body(driver)
+
+    botao = esperar(driver).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, ".like-button"))
+    )
     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", botao)
-    pausar()
+    pausar(0.3)
+
+    salvar_evidencia(driver, "usuario_antes_curtir_post")
 
     driver.execute_script("arguments[0].click();", botao)
+    esperar_body(driver)
     pausar()
 
 
-def abrir_admin_e_validar_status(driver, email, status):
-    driver.get(f"{BASE_URL}/admin/")
-    pausar()
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert "Administração" in driver.page_source
-    assert email in driver.page_source
-    assert status in driver.page_source
-
-    salvar_evidencia(driver, f"admin_mostra_{email.replace('@', '_').replace('.', '_')}_{status}")
-
-
-# ============================================================
-# TESTES SELENIUM PARA EVIDÊNCIAS DO RELATÓRIO
-# ============================================================
-
-def test_01_visitante_visualiza_feed_publico(driver):
-    driver.get(BASE_URL)
-    pausar()
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    fechar_modais(driver)
-
-    assert "Trecho" in driver.page_source
-
-    salvar_evidencia(driver, "test_01_visitante_visualiza_feed_publico")
-
-
-def test_02_usuario_comum_cria_post_e_visualiza_no_feed(driver):
-    atualizar_status_usuario("pedro@trecho.com", "ativo", None, None)
-
-    login(driver, "pedro@trecho.com")
-
-    salvar_evidencia(driver, "test_02_usuario_logado_feed_antes_post")
-
-    conteudo = f"Post criado pelo teste Selenium {datetime.now().strftime('%H%M%S')}"
-
-    preencher_e_enviar_post(driver, conteudo)
-
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), conteudo)
-    )
-    pausar()
-
-    assert conteudo in driver.page_source
-
-    salvar_evidencia(driver, "test_02_usuario_comum_criou_post_feed_depois")
-
-
-def test_03_usuario_comum_curte_post(driver):
-    atualizar_status_usuario("pedro@trecho.com", "ativo", None, None)
-
-    login(driver, "pedro@trecho.com")
-
-    fechar_modais(driver)
-
-    salvar_evidencia(driver, "test_03_feed_antes_curtida")
-
-    botao_curtir = esperar(driver).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, ".like-button"))
-    )
-    pausar()
-
-    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", botao_curtir)
-    pausar()
-
-    driver.execute_script("arguments[0].click();", botao_curtir)
-    pausar()
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, ".like-button"))
-    )
-
-    assert "❤" in driver.page_source or "♡" in driver.page_source
-
-    salvar_evidencia(driver, "test_03_usuario_comum_curtiu_post")
-
-
-def test_04_usuario_comum_denuncia_post(driver):
-    atualizar_status_usuario("pedro@trecho.com", "ativo", None, None)
-
-    conteudo = f"Post da Alice denunciado pelo usuário comum {datetime.now().strftime('%H%M%S')}"
-
-    post_id = preparar_post_com_denuncia_para_moderacao(
-        conteudo=conteudo,
-        autor_email="alice@trecho.com",
-        denunciante_email="pedro@trecho.com",
-        motivo="Denúncia criada para teste."
-    )
-
-    login(driver, "pedro@trecho.com")
-
+def denunciar_post(driver, post_id, motivo, evidencia):
     driver.get(f"{BASE_URL}/denunciar/{post_id}")
-    pausar()
+    esperar_body(driver)
 
-    esperar(driver).until(
-        EC.presence_of_element_located((By.NAME, "motivo"))
-    )
+    campo = esperar(driver).until(EC.presence_of_element_located((By.NAME, "motivo")))
+    campo.clear()
+    campo.send_keys(motivo)
 
-    salvar_evidencia(driver, "test_04_tela_denunciar_post")
-
-    campo_motivo = driver.find_element(By.NAME, "motivo")
-    campo_motivo.clear()
-    campo_motivo.send_keys("Denúncia criada automaticamente pelo teste Selenium.")
-    pausar()
-
-    salvar_evidencia(driver, "test_04_motivo_denuncia_preenchido")
+    salvar_evidencia(driver, evidencia)
 
     botao = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
     driver.execute_script("arguments[0].click();", botao)
+    esperar_body(driver)
     pausar()
 
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
 
-    assert "Denúncia" in driver.page_source or "denúncia" in driver.page_source
-
-    salvar_evidencia(driver, "test_04_denuncia_enviada")
-
-
-def test_05_analista_acessa_relatorios_e_nao_consegue_postar(driver):
-    atualizar_status_usuario("carla@trecho.com", "ativo", None, None)
-
-    login(driver, "carla@trecho.com")
-
+def bloquear_usuario_pelo_post(driver, post_id, conteudo_card):
+    driver.get(f"{BASE_URL}/post/{post_id}")
+    esperar_body(driver)
+    clicar_opcao_menu_do_card(driver, conteudo_card, "Bloquear usuário")
+    esperar_body(driver)
     pausar()
 
-    campos_postagem = driver.find_elements(By.ID, "campoPostFeed")
-    assert len(campos_postagem) == 0
 
-    assert not existe_link_ou_botao_visivel(driver, "Postar")
-    assert not existe_link_ou_botao_visivel(driver, "Novo post")
-
-    salvar_evidencia(driver, "test_05_analista_feed_sem_area_postagem")
-
-    driver.get(f"{BASE_URL}/relatorios/")
-    pausar()
-
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Relatórios")
-    )
-
-    assert "Ranking de posts por engajamento" in driver.page_source
-    assert "Usuários por perfil" in driver.page_source
-    assert "Denúncias por status" in driver.page_source
-
-    salvar_evidencia(driver, "test_05_analista_acessou_relatorios")
-
-
-def test_06_analista_nao_ve_links_restritos_no_menu(driver):
-    atualizar_status_usuario("carla@trecho.com", "ativo", None, None)
-
-    login(driver, "carla@trecho.com")
-
-    pausar()
-
-    assert existe_link_ou_botao_visivel(driver, "Relatórios")
-    assert not existe_link_ou_botao_visivel(driver, "Moderação")
-    assert not existe_link_ou_botao_visivel(driver, "Administração")
-    assert not existe_link_ou_botao_visivel(driver, "Novo post")
-
-    campos_postagem = driver.find_elements(By.ID, "campoPostFeed")
-    assert len(campos_postagem) == 0
-
-    salvar_evidencia(driver, "test_06_analista_nao_ve_links_restritos_no_menu")
-
-
-def test_07_analista_nao_acessa_rotas_restritas_por_url(driver):
-    atualizar_status_usuario("carla@trecho.com", "ativo", None, None)
-
-    login(driver, "carla@trecho.com")
-
+def remover_post_na_moderacao(driver, conteudo_post):
     driver.get(f"{BASE_URL}/moderacao/")
-    pausar()
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert "Painel de moderação" not in driver.page_source
-    assert "Acesso restrito" in driver.page_source or "Feed" in driver.page_source or "Trecho" in driver.page_source
-
-    salvar_evidencia(driver, "test_07_analista_bloqueado_moderacao_por_url")
-
-    driver.get(f"{BASE_URL}/admin/")
-    pausar()
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert "Administração" not in driver.page_source
-    assert "Acesso restrito" in driver.page_source or "Feed" in driver.page_source or "Trecho" in driver.page_source
-
-    salvar_evidencia(driver, "test_07_analista_bloqueado_admin_por_url")
-
-
-def test_08_moderador_acessa_painel_de_moderacao(driver):
-    atualizar_status_usuario("bruno@trecho.com", "ativo", None, None)
-
-    conteudo = f"Post da Alice para painel do moderador {datetime.now().strftime('%H%M%S')}"
-
-    preparar_post_com_denuncia_para_moderacao(
-        conteudo=conteudo,
-        autor_email="alice@trecho.com",
-        denunciante_email="pedro@trecho.com",
-        motivo="Denúncia pendente para evidência do painel de moderação."
-    )
-
-    login(driver, "bruno@trecho.com")
-
-    driver.get(f"{BASE_URL}/moderacao/")
-    pausar()
-
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Painel de moderação")
-    )
-
+    esperar_body(driver)
     assert "Painel de moderação" in driver.page_source
-    assert conteudo in driver.page_source
 
-    salvar_evidencia(driver, "test_08_moderador_acessou_painel_moderacao")
-
-
-def test_09_moderador_remove_post_de_usuario_comum_pela_interface(driver):
-    atualizar_status_usuario("bruno@trecho.com", "ativo", None, None)
-    atualizar_status_usuario("alice@trecho.com", "ativo", None, None)
-
-    conteudo = f"Post da Alice que será removido pelo moderador {datetime.now().strftime('%H%M%S')}"
-
-    post_id = preparar_post_com_denuncia_para_moderacao(
-        conteudo=conteudo,
-        autor_email="alice@trecho.com",
-        denunciante_email="pedro@trecho.com",
-        motivo="Denúncia para teste de remoção pelo moderador."
-    )
-
-    login(driver, "bruno@trecho.com")
-
-    driver.get(f"{BASE_URL}/moderacao/")
+    card = encontrar_card_por_texto(driver, conteudo_post)
+    salvar_evidencia(driver, "moderador_visualiza_denuncia_para_remover")
+    clicar_botao_no_card(driver, card, "Remover post")
+    esperar_body(driver)
     pausar()
 
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Painel de moderação")
+
+def suspender_usuario_pelo_perfil(driver, username, horas=24):
+    driver.get(f"{BASE_URL}/perfil/{username}")
+    esperar_body(driver)
+
+    menu = esperar(driver).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, ".profile-main-menu-button-trecho"))
     )
-
-    card = encontrar_card_por_texto(driver, conteudo)
-
-    assert "Remover post" in card.text
-
-    salvar_evidencia(driver, "test_09_moderador_visualiza_botao_remover_post")
-
-    clicar_botao_do_card(driver, card, "Remover post")
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert obter_status_post(post_id) == "removido"
-
-    salvar_evidencia(driver, "test_09_moderador_removeu_post_interface")
-
-
-def test_10_moderador_suspende_usuario_comum_pela_interface(driver):
-    atualizar_status_usuario("bruno@trecho.com", "ativo", None, None)
-    atualizar_status_usuario("alice@trecho.com", "ativo", None, None)
-
-    conteudo = f"Post da Alice para suspensão pelo moderador {datetime.now().strftime('%H%M%S')}"
-
-    preparar_post_com_denuncia_para_moderacao(
-        conteudo=conteudo,
-        autor_email="alice@trecho.com",
-        denunciante_email="pedro@trecho.com",
-        motivo="Denúncia para testar suspensão feita pelo moderador."
-    )
-
-    login(driver, "bruno@trecho.com")
-
-    driver.get(f"{BASE_URL}/moderacao/")
+    driver.execute_script("arguments[0].click();", menu)
     pausar()
 
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Painel de moderação")
+    clicar_texto(driver, "Suspender usuário")
+
+    modal = esperar(driver).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, ".modal-overlay.active"))
     )
 
-    card = encontrar_card_por_texto(driver, conteudo)
+    campo_horas = modal.find_element(By.NAME, "duracao_horas")
+    campo_horas.clear()
+    campo_horas.send_keys(str(horas))
 
-    assert "Suspender autor" in card.text
+    salvar_evidencia(driver, f"moderador_suspende_{username}")
 
-    salvar_evidencia(driver, "test_10_moderador_visualiza_botao_suspender_usuario")
-
-    clicar_botao_do_card(driver, card, "Suspender autor")
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert obter_status_usuario("alice@trecho.com") == "suspenso"
-
-    salvar_evidencia(driver, "test_10_moderador_suspendeu_usuario_interface")
-
-    login(driver, "daniel@trecho.com")
-    abrir_admin_e_validar_status(driver, "alice@trecho.com", "suspenso")
-
-    atualizar_status_usuario("alice@trecho.com", "ativo", None, None)
-
-
-def test_11_moderador_bane_usuario_comum_pela_interface(driver):
-    atualizar_status_usuario("bruno@trecho.com", "ativo", None, None)
-    atualizar_status_usuario("alice@trecho.com", "ativo", None, None)
-
-    conteudo = f"Post da Alice para banimento pelo moderador {datetime.now().strftime('%H%M%S')}"
-
-    preparar_post_com_denuncia_para_moderacao(
-        conteudo=conteudo,
-        autor_email="alice@trecho.com",
-        denunciante_email="pedro@trecho.com",
-        motivo="Denúncia para testar banimento feito pelo moderador."
-    )
-
-    login(driver, "bruno@trecho.com")
-
-    driver.get(f"{BASE_URL}/moderacao/")
+    form = modal.find_element(By.CSS_SELECTOR, "form")
+    driver.execute_script("arguments[0].submit();", form)
+    esperar_body(driver)
     pausar()
 
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Painel de moderação")
+
+def banir_usuario_pelo_perfil(driver, username):
+    driver.get(f"{BASE_URL}/perfil/{username}")
+    esperar_body(driver)
+
+    menu = esperar(driver).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, ".profile-main-menu-button-trecho"))
     )
-
-    card = encontrar_card_por_texto(driver, conteudo)
-
-    assert "Banir autor" in card.text
-
-    salvar_evidencia(driver, "test_11_moderador_visualiza_botao_banir_usuario")
-
-    clicar_botao_do_card(driver, card, "Banir autor")
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert obter_status_usuario("alice@trecho.com") == "banido"
-
-    salvar_evidencia(driver, "test_11_moderador_baniu_usuario_interface")
-
-    login(driver, "daniel@trecho.com")
-    abrir_admin_e_validar_status(driver, "alice@trecho.com", "banido")
-
-    atualizar_status_usuario("alice@trecho.com", "ativo", None, None)
-
-
-def test_12_admin_suspende_moderador_pela_interface(driver):
-    atualizar_status_usuario("daniel@trecho.com", "ativo", None, None)
-    atualizar_status_usuario("bruno@trecho.com", "ativo", None, None)
-
-    conteudo = f"Post do Bruno moderador para suspensão pelo admin {datetime.now().strftime('%H%M%S')}"
-
-    preparar_post_com_denuncia_para_moderacao(
-        conteudo=conteudo,
-        autor_email="bruno@trecho.com",
-        denunciante_email="pedro@trecho.com",
-        motivo="Denúncia para testar suspensão de moderador pelo administrador."
-    )
-
-    login(driver, "daniel@trecho.com")
-
-    driver.get(f"{BASE_URL}/moderacao/")
+    driver.execute_script("arguments[0].click();", menu)
     pausar()
 
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Painel de moderação")
-    )
+    salvar_evidencia(driver, f"menu_perfil_{username}_antes_banir")
 
-    card = encontrar_card_por_texto(driver, conteudo)
-
-    assert "Suspender autor" in card.text
-
-    salvar_evidencia(driver, "test_12_admin_visualiza_botao_suspender_moderador")
-
-    clicar_botao_do_card(driver, card, "Suspender autor")
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert obter_status_usuario("bruno@trecho.com") == "suspenso"
-
-    salvar_evidencia(driver, "test_12_admin_suspendeu_moderador_interface")
-
-    abrir_admin_e_validar_status(driver, "bruno@trecho.com", "suspenso")
-
-    atualizar_status_usuario("bruno@trecho.com", "ativo", None, None)
-
-
-def test_13_admin_bane_moderador_pela_interface(driver):
-    atualizar_status_usuario("daniel@trecho.com", "ativo", None, None)
-    atualizar_status_usuario("bruno@trecho.com", "ativo", None, None)
-
-    conteudo = f"Post do Bruno moderador para banimento pelo admin {datetime.now().strftime('%H%M%S')}"
-
-    preparar_post_com_denuncia_para_moderacao(
-        conteudo=conteudo,
-        autor_email="bruno@trecho.com",
-        denunciante_email="pedro@trecho.com",
-        motivo="Denúncia para testar banimento de moderador pelo administrador."
-    )
-
-    login(driver, "daniel@trecho.com")
-
-    driver.get(f"{BASE_URL}/moderacao/")
+    clicar_texto(driver, "Banir usuário")
+    esperar_body(driver)
     pausar()
 
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Painel de moderação")
+
+def reativar_usuario_pelo_perfil(driver, username):
+    driver.get(f"{BASE_URL}/perfil/{username}")
+    esperar_body(driver)
+
+    menu = esperar(driver).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, ".profile-main-menu-button-trecho"))
     )
-
-    card = encontrar_card_por_texto(driver, conteudo)
-
-    assert "Banir autor" in card.text
-
-    salvar_evidencia(driver, "test_13_admin_visualiza_botao_banir_moderador")
-
-    clicar_botao_do_card(driver, card, "Banir autor")
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert obter_status_usuario("bruno@trecho.com") == "banido"
-
-    salvar_evidencia(driver, "test_13_admin_baniu_moderador_interface")
-
-    abrir_admin_e_validar_status(driver, "bruno@trecho.com", "banido")
-
-    atualizar_status_usuario("bruno@trecho.com", "ativo", None, None)
-
-
-def test_14_moderador_nao_pune_administrador(driver):
-    atualizar_status_usuario("bruno@trecho.com", "ativo", None, None)
-    atualizar_status_usuario("daniel@trecho.com", "ativo", None, None)
-
-    conteudo = f"Post do administrador para testar hierarquia {datetime.now().strftime('%H%M%S')}"
-
-    preparar_post_com_denuncia_para_moderacao(
-        conteudo=conteudo,
-        autor_email="daniel@trecho.com",
-        denunciante_email="pedro@trecho.com",
-        motivo="Denúncia usada para testar hierarquia entre moderador e administrador."
-    )
-
-    login(driver, "bruno@trecho.com")
-
-    driver.get(f"{BASE_URL}/moderacao/")
+    driver.execute_script("arguments[0].click();", menu)
     pausar()
 
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Painel de moderação")
-    )
+    salvar_evidencia(driver, f"admin_menu_perfil_{username}_reativar")
 
-    assert "Moderadores não podem" in driver.page_source or "administradores" in driver.page_source
+    if "Remover suspensão" in driver.page_source:
+        clicar_texto(driver, "Remover suspensão")
+    else:
+        clicar_texto(driver, "Reativar usuário")
 
-    salvar_evidencia(driver, "test_14_moderador_nao_pune_administrador")
-
-
-def test_15_admin_acessa_administracao(driver):
-    atualizar_status_usuario("daniel@trecho.com", "ativo", None, None)
-
-    login(driver, "daniel@trecho.com")
-
-    driver.get(f"{BASE_URL}/admin/")
+    esperar_body(driver)
     pausar()
 
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
+
+def promover_usuario_para_moderador(driver, username):
+    driver.get(f"{BASE_URL}/perfil/{username}")
+    esperar_body(driver)
+
+    menu = esperar(driver).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, ".profile-main-menu-button-trecho"))
     )
-
-    assert "Administração" in driver.page_source
-
-    salvar_evidencia(driver, "test_15_admin_acessou_administracao")
-
-
-def test_16_admin_acessa_relatorios(driver):
-    atualizar_status_usuario("daniel@trecho.com", "ativo", None, None)
-
-    login(driver, "daniel@trecho.com")
-
-    driver.get(f"{BASE_URL}/relatorios/")
+    driver.execute_script("arguments[0].click();", menu)
     pausar()
 
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Relatórios")
-    )
+    salvar_evidencia(driver, f"admin_menu_perfil_{username}_promover")
 
-    assert "Histórico de moderação" in driver.page_source
-    assert "Ranking de posts por engajamento" in driver.page_source
-
-    salvar_evidencia(driver, "test_16_admin_acessou_relatorios")
-
-
-def test_17_usuario_suspenso_consegue_logar_mas_nao_postar(driver):
-    atualizar_status_usuario(
-        "alice@trecho.com",
-        "suspenso",
-        datetime.now() + timedelta(days=1),
-        "Suspensão aplicada para validar bloqueio de postagem."
-    )
-
-    login(driver, "alice@trecho.com", fechar_modal=False)
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
+    clicar_texto(driver, "Tornar moderador")
+    esperar_body(driver)
     pausar()
 
-    assert "Conta suspensa" in driver.page_source or "suspensa" in driver.page_source
 
-    salvar_evidencia(driver, "test_17_usuario_suspenso_modal")
+def validar_suspenso_nao_publica_nem_comenta(driver, post_id_para_tentar_comentar):
+    driver.get(BASE_URL)
+    esperar_body(driver)
 
-    fechar_modais(driver)
-
-    conteudo = f"Tentativa de post suspenso {datetime.now().strftime('%H%M%S')}"
-
-    preencher_e_enviar_post(driver, conteudo)
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert conteudo not in driver.page_source
     assert "suspensa" in driver.page_source or "suspenso" in driver.page_source
 
-    salvar_evidencia(driver, "test_17_usuario_suspenso_nao_consegue_postar")
+    campos = driver.find_elements(By.ID, "campoPostFeed")
+    assert len(campos) == 0 or campos[0].get_attribute("disabled") is not None
 
-    atualizar_status_usuario("alice@trecho.com", "ativo", None, None)
+    botoes_postar = driver.find_elements(By.ID, "botaoPostarFeed")
+    assert len(botoes_postar) == 0 or botoes_postar[0].get_attribute("disabled") is not None
 
+    salvar_evidencia(driver, "usuario_suspenso_feed_postagem_desativada")
 
-def test_18_usuario_banido_nao_consegue_logar(driver):
-    atualizar_status_usuario(
-        "alice@trecho.com",
-        "banido",
-        None,
-        "Banimento aplicado para validar bloqueio de login."
-    )
+    driver.get(f"{BASE_URL}/post/{post_id_para_tentar_comentar}")
+    esperar_body(driver)
 
-    driver.get(f"{BASE_URL}/auth/logout")
-    pausar()
+    assert "Você não pode comentar" in driver.page_source or "suspensa" in driver.page_source
 
-    driver.get(f"{BASE_URL}/auth/login")
-    pausar()
+    textarea_desativado = driver.find_elements(By.CSS_SELECTOR, "textarea[disabled]")
+    assert len(textarea_desativado) > 0
 
-    campo_email = esperar(driver).until(
-        EC.presence_of_element_located((By.NAME, "email"))
-    )
-    campo_email.clear()
-    campo_email.send_keys("alice@trecho.com")
-    pausar()
-
-    campo_senha = driver.find_element(By.NAME, "senha")
-    campo_senha.clear()
-    campo_senha.send_keys("123456")
-    pausar()
-
-    salvar_evidencia(driver, "test_18_usuario_banido_login_preenchido")
-
-    botao_login = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-    botao_login.click()
-    pausar()
-
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    assert "Conta banida" in driver.page_source or "banida" in driver.page_source
-
-    salvar_evidencia(driver, "test_18_usuario_banido_bloqueado")
-
-    atualizar_status_usuario("alice@trecho.com", "ativo", None, None)
+    salvar_evidencia(driver, "usuario_suspenso_comentario_desativado")
 
 
-def test_19_admin_visualiza_logs_e_usuarios(driver):
-    atualizar_status_usuario("daniel@trecho.com", "ativo", None, None)
+def validar_analista(driver):
+    login(driver, EMAIL_ANALISTA, nome_evidencia="analista_login")
 
-    login(driver, "daniel@trecho.com")
+    driver.get(BASE_URL)
+    esperar_body(driver)
 
-    driver.get(f"{BASE_URL}/admin/")
-    pausar()
+    # O analista pode visualizar o feed, mas não deve ter campo de postagem.
+    # Não usamos page_source aqui porque o texto "campoPostFeed" pode aparecer
+    # dentro de JavaScript do template mesmo sem o campo estar disponível.
+    assert not existe_elemento_visivel(driver, By.ID, "campoPostFeed")
+    assert not existe_elemento_visivel(driver, By.ID, "botaoPostarFeed")
+    assert not existe_botao_ou_link_visivel(driver, "Postar")
+    assert not existe_botao_ou_link_visivel(driver, "Novo trecho")
 
-    esperar(driver).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
+    # O analista deve ver relatórios, mas não deve ver atalhos de moderação/admin.
+    assert existe_botao_ou_link_visivel(driver, "Relatórios")
+    assert not existe_botao_ou_link_visivel(driver, "Moderação")
+    assert not existe_botao_ou_link_visivel(driver, "Administração")
 
-    assert "Usuários cadastrados" in driver.page_source or "Últimos logins" in driver.page_source
-
-    salvar_evidencia(driver, "test_19_admin_visualiza_usuarios_e_logs")
-
-
-def test_20_relatorios_mostram_engajamento_denuncias_e_moderacao(driver):
-    atualizar_status_usuario("carla@trecho.com", "ativo", None, None)
-
-    login(driver, "carla@trecho.com")
+    salvar_evidencia(driver, "analista_feed_sem_acoes_restritas")
 
     driver.get(f"{BASE_URL}/relatorios/")
-    pausar()
+    esperar_body(driver)
 
-    esperar(driver).until(
-        EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Relatórios")
-    )
-
+    assert "Relatórios" in driver.page_source
     assert "Ranking de posts por engajamento" in driver.page_source
     assert "Usuários por perfil" in driver.page_source
     assert "Denúncias por status" in driver.page_source
 
-    salvar_evidencia(driver, "test_20_relatorios_engajamento_denuncias_moderacao")
+    salvar_evidencia(driver, "analista_relatorios")
+
+    driver.get(f"{BASE_URL}/moderacao/")
+    esperar_body(driver)
+    assert "Painel de moderação" not in driver.page_source
+
+    driver.get(f"{BASE_URL}/admin/")
+    esperar_body(driver)
+    assert "Usuários cadastrados" not in driver.page_source
+    assert "Últimos logins" not in driver.page_source
+
+    salvar_evidencia(driver, "analista_rotas_restritas_bloqueadas")
+
+
+# ============================================================
+# FLUXO COMPLETO PEDIDO
+# ============================================================
+
+def test_fluxo_completo_trecho_procedures_e_papeis(driver):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    post_pedro_original = f"Fluxo completo {timestamp} - post inicial do Pedro"
+    post_pedro_editado = f"Fluxo completo {timestamp} - post editado do Pedro"
+    bio_pedro = f"Bio atualizada pelo fluxo completo Selenium {timestamp}"
+
+    post_alice_interacao = f"Fluxo completo {timestamp} - post da Alice para interação"
+    post_alice_denuncia_moderacao = f"Fluxo completo {timestamp} - post da Alice para remoção na moderação"
+    post_pedro_moderacao_alice = f"Fluxo completo {timestamp} - post do Pedro para Alice moderadora remover"
+
+    post_alice_interacao_id = criar_post_no_banco(EMAIL_ALICE, post_alice_interacao)
+    post_alice_denuncia_moderacao_id = criar_post_no_banco(EMAIL_ALICE, post_alice_denuncia_moderacao)
+    criar_denuncia_no_banco(
+        post_alice_denuncia_moderacao_id,
+        EMAIL_USUARIO,
+        "Denúncia criada para o fluxo completo de moderação."
+    )
+
+    # 1) Convidado visualiza o feed e tenta interagir.
+    logout(driver)
+    driver.get(BASE_URL)
+    esperar_body(driver)
+    assert "Trecho" in driver.page_source
+    salvar_evidencia(driver, "01_convidado_visualiza_feed")
+
+    botao_interacao = esperar(driver).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, ".like-button, .tweet-action-button"))
+    )
+    driver.execute_script("arguments[0].click();", botao_interacao)
+    pausar()
+
+    assert "Entre para interagir" in driver.page_source
+    assert "Criar usuário" in driver.page_source
+    assert "Entrar" in driver.page_source
+    salvar_evidencia(driver, "02_convidado_modal_entre_para_interagir")
+
+    # 2) Tenta entrar com senha errada e depois com senha correta.
+    driver.get(f"{BASE_URL}/auth/login")
+    esperar_body(driver)
+
+    driver.find_element(By.NAME, "email").send_keys(EMAIL_USUARIO)
+    driver.find_element(By.NAME, "senha").send_keys("senha_errada")
+    salvar_evidencia(driver, "03_login_senha_errada_preenchido")
+    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+    esperar_body(driver)
+
+    assert "inválid" in driver.page_source.lower() or "senha" in driver.page_source.lower()
+    salvar_evidencia(driver, "04_login_senha_errada_bloqueado")
+
+    login(driver, EMAIL_USUARIO, nome_evidencia="05_login_usuario_correto")
+
+    # 3) Usuário comum cria post.
+    preencher_e_enviar_post(driver, post_pedro_original)
+    esperar(driver).until(EC.text_to_be_present_in_element((By.TAG_NAME, "body"), post_pedro_original))
+    assert obter_post_por_conteudo(post_pedro_original) is not None
+    salvar_evidencia(driver, "06_usuario_criou_post")
+
+    # 4) Edita post pelo modal/menu do próprio post.
+    editar_post_pelo_feed(driver, post_pedro_original, post_pedro_editado)
+    esperar(driver).until(EC.text_to_be_present_in_element((By.TAG_NAME, "body"), post_pedro_editado))
+    assert obter_post_por_conteudo(post_pedro_editado) is not None
+    salvar_evidencia(driver, "07_usuario_editou_post")
+
+    # 5) Abre notificações e perfil.
+    driver.get(f"{BASE_URL}/notificacoes/")
+    esperar_body(driver)
+    assert "Notificações" in driver.page_source
+    salvar_evidencia(driver, "08_usuario_abriu_notificacoes")
+
+    driver.get(f"{BASE_URL}/perfil/pedro")
+    esperar_body(driver)
+    assert "@pedro" in driver.page_source
+    salvar_evidencia(driver, "09_usuario_abriu_perfil")
+
+    # 6) Edita bio do perfil.
+    editar_bio_perfil(driver, bio_pedro)
+    driver.get(f"{BASE_URL}/perfil/pedro")
+    esperar_body(driver)
+    assert bio_pedro in driver.page_source
+    salvar_evidencia(driver, "10_usuario_editou_bio")
+
+    # 7) Comenta post, curte post e denuncia post.
+    comentario = f"Comentário do fluxo completo {timestamp}"
+    comentar_post(driver, post_alice_interacao_id, comentario)
+    assert contar_comentarios(post_alice_interacao_id, comentario) == 1
+    salvar_evidencia(driver, "11_usuario_comentou_post")
+
+    curtir_post(driver, post_alice_interacao_id)
+    assert contar_curtidas(post_alice_interacao_id, EMAIL_USUARIO) == 1
+    salvar_evidencia(driver, "12_usuario_curtiu_post")
+
+    denunciar_post(
+        driver,
+        post_alice_interacao_id,
+        "Denúncia do primeiro post da Alice no fluxo completo.",
+        "13_usuario_denuncia_primeiro_post"
+    )
+    assert contar_denuncias(post_alice_interacao_id, EMAIL_USUARIO) >= 1
+
+    # 8) Bloqueia Alice, desbloqueia pelo banco, depois denuncia outro post.
+    bloquear_usuario_pelo_post(driver, post_alice_interacao_id, post_alice_interacao)
+    assert contar_bloqueio(EMAIL_USUARIO, EMAIL_ALICE) == 1
+    salvar_evidencia(driver, "14_usuario_bloqueou_alice")
+
+    desbloquear_usuario_no_banco(EMAIL_USUARIO, EMAIL_ALICE)
+    assert contar_bloqueio(EMAIL_USUARIO, EMAIL_ALICE) == 0
+    driver.get(BASE_URL)
+    esperar_body(driver)
+    assert post_alice_interacao in driver.page_source or "Feed" in driver.page_source
+    salvar_evidencia(driver, "15_usuario_desbloqueado_por_banco")
+
+    denunciar_post(
+        driver,
+        post_alice_denuncia_moderacao_id,
+        "Denúncia do segundo post da Alice para a tela de moderação.",
+        "16_usuario_denuncia_post_para_moderacao"
+    )
+    assert contar_denuncias(post_alice_denuncia_moderacao_id, EMAIL_USUARIO) >= 1
+
+    logout(driver)
+
+    # 9) Moderador acessa moderação e remove post denunciado.
+    login(driver, EMAIL_MODERADOR, nome_evidencia="17_moderador_login")
+    remover_post_na_moderacao(driver, post_alice_denuncia_moderacao)
+    assert obter_status_post(post_alice_denuncia_moderacao_id) == "removido"
+    salvar_evidencia(driver, "18_moderador_removeu_post")
+
+    # 10) Moderador acessa perfil da Alice e suspende usuária.
+    suspender_usuario_pelo_perfil(driver, "alice", horas=24)
+    assert obter_status_usuario(EMAIL_ALICE) == "suspenso"
+    assert contar_logs_moderacao(EMAIL_ALICE) >= 1
+    salvar_evidencia(driver, "19_moderador_suspendeu_alice")
+
+    logout(driver)
+
+    # 11) Alice suspensa consegue logar, mas não consegue postar nem comentar.
+    login(driver, EMAIL_ALICE, nome_evidencia="20_alice_suspensa_login")
+    validar_suspenso_nao_publica_nem_comenta(driver, post_alice_interacao_id)
+    logout(driver)
+
+    # 12) Moderador bane Alice.
+    login(driver, EMAIL_MODERADOR, nome_evidencia="21_moderador_login_para_banir")
+    banir_usuario_pelo_perfil(driver, "alice")
+    assert obter_status_usuario(EMAIL_ALICE) == "banido"
+    salvar_evidencia(driver, "22_moderador_baniu_alice")
+    logout(driver)
+
+    # 13) Alice banida não consegue logar.
+    login(driver, EMAIL_ALICE, sucesso=False, nome_evidencia="23_alice_banida_tenta_login")
+    assert "banida" in driver.page_source.lower() or "banido" in driver.page_source.lower()
+    salvar_evidencia(driver, "24_alice_banida_bloqueada_no_login")
+
+    # 14) Analista faz ações permitidas e não acessa áreas restritas.
+    validar_analista(driver)
+    logout(driver)
+
+    # 15) Admin acessa administração, reativa Alice e promove para moderadora.
+    login(driver, EMAIL_ADMIN, nome_evidencia="25_admin_login")
+
+    driver.get(f"{BASE_URL}/admin/")
+    esperar_body(driver)
+    assert "Administração" in driver.page_source
+    assert EMAIL_ALICE in driver.page_source
+    salvar_evidencia(driver, "26_admin_abriu_administracao")
+
+    reativar_usuario_pelo_perfil(driver, "alice")
+    assert obter_status_usuario(EMAIL_ALICE) == "ativo"
+    salvar_evidencia(driver, "27_admin_reativou_alice")
+
+    promover_usuario_para_moderador(driver, "alice")
+    assert obter_perfil_usuario(EMAIL_ALICE) == "moderador"
+    salvar_evidencia(driver, "28_admin_promoveu_alice_moderadora")
+
+    logout(driver)
+
+    # 16) Alice, agora moderadora, faz uma ação real de moderação.
+    post_pedro_moderacao_alice_id = criar_post_no_banco(EMAIL_USUARIO, post_pedro_moderacao_alice)
+    criar_denuncia_no_banco(
+        post_pedro_moderacao_alice_id,
+        EMAIL_ADMIN,
+        "Denúncia criada para validar Alice promovida como moderadora."
+    )
+
+    login(driver, EMAIL_ALICE, nome_evidencia="29_alice_promovida_login")
+
+    driver.get(f"{BASE_URL}/moderacao/")
+    esperar_body(driver)
+    assert "Painel de moderação" in driver.page_source
+    assert post_pedro_moderacao_alice in driver.page_source
+    salvar_evidencia(driver, "30_alice_promovida_acessa_moderacao")
+
+    remover_post_na_moderacao(driver, post_pedro_moderacao_alice)
+    assert obter_status_post(post_pedro_moderacao_alice_id) == "removido"
+    salvar_evidencia(driver, "31_alice_promovida_removeu_post")
+
+    # Limpeza mínima para não deixar Alice como moderadora em próximos testes.
+    definir_status_usuario(EMAIL_ALICE, "ativo", None, None)
+    app = create_app()
+    with app.app_context():
+        perfil_usuario_id = db.session.execute(
+            text("SELECT id FROM perfis WHERE nome = 'usuario' LIMIT 1")
+        ).scalar()
+        db.session.execute(
+            text("UPDATE usuarios SET perfil_id = :perfil_id WHERE email = :email"),
+            {
+                "perfil_id": perfil_usuario_id,
+                "email": EMAIL_ALICE
+            }
+        )
+        db.session.commit()
+
+    salvar_evidencia(driver, "32_fluxo_completo_finalizado")

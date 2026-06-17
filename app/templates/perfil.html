@@ -1,0 +1,1040 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil - Trecho{% endblock %}
+
+{% block content %}
+{% set usuario_interativo = current_user.is_authenticated and current_user.tem_perfil('usuario', 'moderador', 'admin') %}
+{% set usuario_suspenso = usuario_interativo and current_user.status_conta == 'suspenso' %}
+
+<section class="profile-cover-trecho">
+    {% if usuario.capa_perfil_url %}
+        <img src="{{ usuario.capa_perfil_url }}" alt="Capa de {{ usuario.nome }}">
+    {% endif %}
+</section>
+
+<section class="profile-card-trecho">
+    <div class="profile-avatar-trecho">
+        {% if usuario.foto_perfil_url %}
+            <img src="{{ usuario.foto_perfil_url }}" alt="Foto de {{ usuario.nome }}">
+        {% else %}
+            {{ usuario.nome[0] }}
+        {% endif %}
+    </div>
+
+    <div class="profile-info-trecho">
+        <div>
+            <h1>{{ usuario.nome }}</h1>
+            <p>@{{ usuario.username }}</p>
+        </div>
+
+        {% if current_user.is_authenticated and current_user.id == usuario.id %}
+            <button
+                type="button"
+                class="button-link profile-edit-button-trecho"
+                onclick="abrirModalTrecho('modalEditarPerfil')"
+            >
+                Editar perfil
+            </button>
+
+        {% elif usuario_interativo %}
+
+            {% if current_user.tem_perfil('moderador', 'admin') %}
+                <div class="dropdown-trecho profile-main-menu-trecho">
+                    <button
+                        type="button"
+                        class="tweet-more profile-main-menu-button-trecho"
+                        onclick="event.stopPropagation(); alternarMenuTresPontos('menu-perfil-principal-{{ usuario.id }}')"
+                        aria-label="Abrir menu do perfil"
+                    >
+                        <span class="icon-svg icon-more"></span>
+                    </button>
+
+                    <div class="dropdown-menu-trecho" id="menu-perfil-principal-{{ usuario.id }}">
+                        <form method="POST" action="{{ url_for('posts.bloquear_usuario', usuario_id=usuario.id) }}">
+                            <input type="hidden" name="origem" value="perfil">
+                            <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+
+                            <button type="submit">
+                                Bloquear usuário
+                            </button>
+                        </form>
+
+                        {% if current_user.tem_perfil('admin') or (current_user.tem_perfil('moderador') and usuario.perfil.nome == 'usuario') %}
+                            <button
+                                type="button"
+                                onclick="abrirModalTrecho('modalSuspenderPerfilPrincipal{{ usuario.id }}')"
+                            >
+                                Suspender usuário
+                            </button>
+
+                            <form method="POST" action="{{ url_for('posts.alterar_status_usuario_menu', usuario_id=usuario.id, novo_status='banido') }}">
+                                <input type="hidden" name="origem" value="perfil">
+                                <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+                                <input
+                                    type="hidden"
+                                    name="justificativa"
+                                    value="Usuário banido pelo menu principal do perfil."
+                                >
+
+                                <button type="submit" class="danger-option">
+                                    Banir usuário
+                                </button>
+                            </form>
+
+                            {% if usuario.status_conta == 'suspenso' %}
+                                <form method="POST" action="{{ url_for('posts.alterar_status_usuario_menu', usuario_id=usuario.id, novo_status='ativo') }}">
+                                    <input type="hidden" name="origem" value="perfil">
+                                    <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+                                    <input
+                                        type="hidden"
+                                        name="justificativa"
+                                        value="Suspensão removida pelo menu principal do perfil."
+                                    >
+
+                                    <button type="submit">
+                                        Remover suspensão
+                                    </button>
+                                </form>
+                            {% endif %}
+
+                            {% if usuario.status_conta == 'banido' %}
+                                <form method="POST" action="{{ url_for('posts.alterar_status_usuario_menu', usuario_id=usuario.id, novo_status='ativo') }}">
+                                    <input type="hidden" name="origem" value="perfil">
+                                    <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+                                    <input
+                                        type="hidden"
+                                        name="justificativa"
+                                        value="Usuário reativado após banimento pelo menu principal do perfil."
+                                    >
+
+                                    <button type="submit">
+                                        Reativar usuário
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if current_user.tem_perfil('admin') %}
+                            <form method="POST" action="{{ url_for('posts.alterar_perfil_usuario_menu', usuario_id=usuario.id, novo_perfil='usuario') }}">
+                                <input type="hidden" name="origem" value="perfil">
+                                <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+                                <input type="hidden" name="justificativa" value="Administrador alterou o perfil para usuário.">
+
+                                <button type="submit">
+                                    Tornar usuário
+                                </button>
+                            </form>
+
+                            <form method="POST" action="{{ url_for('posts.alterar_perfil_usuario_menu', usuario_id=usuario.id, novo_perfil='moderador') }}">
+                                <input type="hidden" name="origem" value="perfil">
+                                <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+                                <input type="hidden" name="justificativa" value="Administrador promoveu o usuário a moderador.">
+
+                                <button type="submit">
+                                    Tornar moderador
+                                </button>
+                            </form>
+
+                            <form method="POST" action="{{ url_for('posts.alterar_perfil_usuario_menu', usuario_id=usuario.id, novo_perfil='analista') }}">
+                                <input type="hidden" name="origem" value="perfil">
+                                <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+                                <input type="hidden" name="justificativa" value="Administrador alterou o perfil para analista.">
+
+                                <button type="submit">
+                                    Tornar analista
+                                </button>
+                            </form>
+
+                            <form method="POST" action="{{ url_for('posts.alterar_perfil_usuario_menu', usuario_id=usuario.id, novo_perfil='admin') }}">
+                                <input type="hidden" name="origem" value="perfil">
+                                <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+                                <input type="hidden" name="justificativa" value="Administrador promoveu o usuário a administrador.">
+
+                                <button type="submit">
+                                    Tornar admin
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+
+            {% else %}
+                <form method="POST" action="{{ url_for('posts.bloquear_usuario', usuario_id=usuario.id) }}">
+                    <input type="hidden" name="origem" value="perfil">
+                    <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+
+                    <button type="submit" class="button-secondary">
+                        Bloquear usuário
+                    </button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="profile-bio-trecho">
+        {% if usuario.bio %}
+            <p>{{ usuario.bio }}</p>
+        {% else %}
+            <p class="profile-empty-text">Este usuário ainda não adicionou uma bio.</p>
+        {% endif %}
+    </div>
+
+    {% if current_user.is_authenticated and current_user.tem_perfil('moderador', 'admin') %}
+        <div class="profile-meta-trecho">
+            <span>Perfil: {{ usuario.perfil.nome }}</span>
+            <span>Status: {{ usuario.status_conta }}</span>
+        </div>
+    {% endif %}
+</section>
+
+{% if current_user.is_authenticated and current_user.tem_perfil('moderador', 'admin') and current_user.id != usuario.id %}
+    {% if current_user.tem_perfil('admin') or (current_user.tem_perfil('moderador') and usuario.perfil.nome == 'usuario') %}
+        <div class="modal-overlay" id="modalSuspenderPerfilPrincipal{{ usuario.id }}">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h2>Suspender usuário</h2>
+
+                    <button
+                        type="button"
+                        class="modal-close"
+                        onclick="fecharModalTrecho('modalSuspenderPerfilPrincipal{{ usuario.id }}')"
+                        aria-label="Fechar"
+                    >
+                        <span class="icon-svg icon-x"></span>
+                    </button>
+                </div>
+
+                <form
+                    method="POST"
+                    action="{{ url_for('posts.alterar_status_usuario_menu', usuario_id=usuario.id, novo_status='suspenso') }}"
+                    class="modal-form modal-form-compacta"
+                >
+                    <input type="hidden" name="origem" value="perfil">
+                    <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+
+                    <p>
+                        Você está suspendendo
+                        <strong>@{{ usuario.username }}</strong>.
+                    </p>
+
+                    <label for="duracao_horas_perfil_principal_{{ usuario.id }}">Tempo de suspensão em horas</label>
+                    <input
+                        type="number"
+                        id="duracao_horas_perfil_principal_{{ usuario.id }}"
+                        name="duracao_horas"
+                        min="1"
+                        value="24"
+                        required
+                    >
+
+                    <label for="justificativa_suspensao_perfil_principal_{{ usuario.id }}">Justificativa</label>
+                    <textarea
+                        id="justificativa_suspensao_perfil_principal_{{ usuario.id }}"
+                        name="justificativa"
+                        rows="3"
+                        maxlength="255"
+                        required
+                    >Usuário suspenso pelo menu principal do perfil.</textarea>
+
+                    <div class="modal-footer">
+                        <span>Essa ação será registrada nos logs.</span>
+
+                        <button type="submit" class="danger-button">
+                            Suspender
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+{% endif %}
+
+<section class="page-header profile-posts-header">
+    <h1>Posts de @{{ usuario.username }}</h1>
+    <p>Publicações recentes deste perfil.</p>
+</section>
+
+<section class="timeline-feed">
+    {% for post in posts %}
+        <article class="tweet-card">
+            <a href="{{ url_for('perfil.visualizar_perfil', username=usuario.username) }}" class="tweet-avatar">
+                {% if usuario.foto_perfil_url %}
+                    <img src="{{ usuario.foto_perfil_url }}" alt="Foto de {{ usuario.nome }}">
+                {% else %}
+                    {{ usuario.nome[0] }}
+                {% endif %}
+            </a>
+
+            <div class="tweet-main">
+                <div class="tweet-top">
+                    <div class="tweet-user-line">
+                        <a href="{{ url_for('perfil.visualizar_perfil', username=usuario.username) }}">
+                            <strong>{{ usuario.nome }}</strong>
+                        </a>
+
+                        <a href="{{ url_for('perfil.visualizar_perfil', username=usuario.username) }}">
+                            <span>@{{ usuario.username }}</span>
+                        </a>
+
+                        <span>·</span>
+                        <small>{{ post.data_publicacao }}</small>
+                    </div>
+
+                    {% if current_user.is_authenticated %}
+                        <div class="dropdown-trecho">
+                            <button
+                                type="button"
+                                class="tweet-more"
+                                onclick="event.stopPropagation(); alternarMenuTresPontos('menu-perfil-post-{{ post.id }}')"
+                                aria-label="Abrir menu do post"
+                            >
+                                <span class="icon-svg icon-more"></span>
+                            </button>
+
+                            <div class="dropdown-menu-trecho" id="menu-perfil-post-{{ post.id }}">
+                                {% if current_user.id == usuario.id %}
+                                    <button
+                                        type="button"
+                                        onclick="abrirModalTrecho('modalEditarPerfilPost{{ post.id }}')"
+                                    >
+                                        Editar post
+                                    </button>
+                                {% else %}
+                                    {% if usuario_interativo %}
+                                        <button
+                                            type="button"
+                                            onclick="abrirModalTrecho('modalDenunciarPerfilPost{{ post.id }}')"
+                                        >
+                                            Denunciar post
+                                        </button>
+
+                                        <form method="POST" action="{{ url_for('posts.bloquear_usuario', usuario_id=usuario.id) }}">
+                                            <input type="hidden" name="origem" value="perfil">
+                                            <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+
+                                            <button type="submit">
+                                                Bloquear usuário
+                                            </button>
+                                        </form>
+                                    {% endif %}
+
+                                    {% if current_user.tem_perfil('moderador', 'admin') %}
+                                        <form method="POST" action="{{ url_for('posts.remover_post_menu', post_id=post.id) }}">
+                                            <input type="hidden" name="origem" value="perfil">
+                                            <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+                                            <input
+                                                type="hidden"
+                                                name="justificativa"
+                                                value="Post removido pelo menu de moderação."
+                                            >
+
+                                            <button type="submit" class="danger-option">
+                                                Excluir post
+                                            </button>
+                                        </form>
+
+                                        {% if current_user.tem_perfil('admin') or (current_user.tem_perfil('moderador') and usuario.perfil.nome == 'usuario') %}
+                                            <button
+                                                type="button"
+                                                onclick="abrirModalTrecho('modalSuspenderPerfilUsuario{{ post.id }}')"
+                                            >
+                                                Suspender usuário
+                                            </button>
+
+                                            <form method="POST" action="{{ url_for('posts.alterar_status_usuario_menu', usuario_id=usuario.id, novo_status='banido') }}">
+                                                <input type="hidden" name="origem" value="perfil">
+                                                <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+                                                <input
+                                                    type="hidden"
+                                                    name="justificativa"
+                                                    value="Usuário banido pelo menu de moderação."
+                                                >
+
+                                                <button type="submit" class="danger-option">
+                                                    Banir usuário
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <a href="{{ url_for('posts.ver_post', post_id=post.id) }}" class="tweet-click-area">
+                    <div class="tweet-content">
+                        <p>{{ post.conteudo }}</p>
+                    </div>
+                </a>
+
+                <div class="tweet-actions">
+                    {% if usuario_interativo %}
+                        {% if usuario_suspenso %}
+                            <button
+                                type="button"
+                                class="tweet-action-button disabled-action-trecho"
+                                disabled
+                                title="Sua conta está suspensa. Você não pode comentar."
+                                aria-label="Comentar bloqueado"
+                            >
+                                <span class="icon-svg icon-comment"></span>
+                                <span>{{ post.total_comentarios }}</span>
+                            </button>
+                        {% else %}
+                            <button
+                                type="button"
+                                class="tweet-action-button"
+                                onclick="abrirModalTrecho('modalComentarPerfilPost{{ post.id }}')"
+                                aria-label="Comentar"
+                            >
+                                <span class="icon-svg icon-comment"></span>
+                                <span>{{ post.total_comentarios }}</span>
+                            </button>
+                        {% endif %}
+
+                        <form method="POST" action="{{ url_for('posts.curtir_post', post_id=post.id) }}" class="like-form">
+                            <input type="hidden" name="origem" value="perfil">
+                            <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+
+                            <button
+                                type="submit"
+                                class="like-button {% if post.usuario_curtiu %}liked{% endif %}"
+                                aria-label="Curtir"
+                            >
+                                {% if post.usuario_curtiu %}
+                                    <span class="icon-svg icon-heart-filled"></span>
+                                {% else %}
+                                    <span class="icon-svg icon-heart"></span>
+                                {% endif %}
+                                <span>{{ post.total_curtidas }}</span>
+                            </button>
+                        </form>
+                    {% else %}
+                        <button
+                            type="button"
+                            class="tweet-action-button"
+                            onclick="abrirModalLoginNecessario()"
+                            aria-label="Comentar"
+                        >
+                            <span class="icon-svg icon-comment"></span>
+                            <span>{{ post.total_comentarios }}</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="like-button"
+                            onclick="abrirModalLoginNecessario()"
+                            aria-label="Curtir"
+                        >
+                            <span class="icon-svg icon-heart"></span>
+                            <span>{{ post.total_curtidas }}</span>
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+
+        {% if usuario_interativo and not usuario_suspenso %}
+            <div class="modal-overlay" id="modalComentarPerfilPost{{ post.id }}">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h2>Responder trecho</h2>
+
+                        <button
+                            type="button"
+                            class="modal-close"
+                            onclick="fecharModalTrecho('modalComentarPerfilPost{{ post.id }}')"
+                            aria-label="Fechar"
+                        >
+                            <span class="icon-svg icon-x"></span>
+                        </button>
+                    </div>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('posts.comentar_post', post_id=post.id) }}"
+                        class="modal-form modal-form-compacta"
+                    >
+                        <input type="hidden" name="origem" value="perfil">
+                        <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+
+                        <p>
+                            Respondendo ao post de
+                            <strong>@{{ usuario.username }}</strong>
+                        </p>
+
+                        <textarea
+                            name="conteudo"
+                            rows="4"
+                            maxlength="280"
+                            placeholder="Postar sua resposta"
+                            required
+                        ></textarea>
+
+                        <div class="modal-footer">
+                            <span>Máximo de 280 caracteres</span>
+
+                            <button type="submit">
+                                Responder
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if usuario_interativo and current_user.id == usuario.id %}
+            <div class="modal-overlay" id="modalEditarPerfilPost{{ post.id }}">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h2>Editar post</h2>
+
+                        <button
+                            type="button"
+                            class="modal-close"
+                            onclick="fecharModalTrecho('modalEditarPerfilPost{{ post.id }}')"
+                            aria-label="Fechar"
+                        >
+                            <span class="icon-svg icon-x"></span>
+                        </button>
+                    </div>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('posts.editar_post', post_id=post.id) }}"
+                        class="modal-form modal-form-compacta"
+                    >
+                        <input type="hidden" name="origem" value="perfil">
+                        <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+
+                        <textarea
+                            name="conteudo"
+                            rows="4"
+                            maxlength="280"
+                            required
+                        >{{ post.conteudo }}</textarea>
+
+                        <div class="modal-footer">
+                            <span>Máximo de 280 caracteres</span>
+
+                            <button type="submit">
+                                Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if usuario_interativo and current_user.id != usuario.id %}
+            <div class="modal-overlay" id="modalDenunciarPerfilPost{{ post.id }}">
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <h2>Denunciar post</h2>
+
+                        <button
+                            type="button"
+                            class="modal-close"
+                            onclick="fecharModalTrecho('modalDenunciarPerfilPost{{ post.id }}')"
+                            aria-label="Fechar"
+                        >
+                            <span class="icon-svg icon-x"></span>
+                        </button>
+                    </div>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('posts.denunciar_post', post_id=post.id) }}"
+                        class="modal-form modal-form-compacta"
+                    >
+                        <input type="hidden" name="origem" value="perfil">
+                        <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+
+                        <p>
+                            Informe o motivo da denúncia para que a moderação possa analisar este conteúdo.
+                        </p>
+
+                        <div class="modal-post-preview">
+                            <strong>@{{ usuario.username }}</strong>
+                            <p>{{ post.conteudo }}</p>
+                        </div>
+
+                        <label for="motivo_denuncia_perfil_{{ post.id }}">Motivo da denúncia</label>
+                        <textarea
+                            id="motivo_denuncia_perfil_{{ post.id }}"
+                            name="motivo"
+                            rows="4"
+                            maxlength="255"
+                            placeholder="Explique o motivo da denúncia..."
+                            required
+                        ></textarea>
+
+                        <div class="modal-footer">
+                            <span>Essa denúncia será enviada para a moderação.</span>
+
+                            <button type="submit" class="danger-button">
+                                Enviar denúncia
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if current_user.is_authenticated and current_user.tem_perfil('moderador', 'admin') and current_user.id != usuario.id %}
+            {% if current_user.tem_perfil('admin') or (current_user.tem_perfil('moderador') and usuario.perfil.nome == 'usuario') %}
+                <div class="modal-overlay" id="modalSuspenderPerfilUsuario{{ post.id }}">
+                    <div class="modal-card">
+                        <div class="modal-header">
+                            <h2>Suspender usuário</h2>
+
+                            <button
+                                type="button"
+                                class="modal-close"
+                                onclick="fecharModalTrecho('modalSuspenderPerfilUsuario{{ post.id }}')"
+                                aria-label="Fechar"
+                            >
+                                <span class="icon-svg icon-x"></span>
+                            </button>
+                        </div>
+
+                        <form
+                            method="POST"
+                            action="{{ url_for('posts.alterar_status_usuario_menu', usuario_id=usuario.id, novo_status='suspenso') }}"
+                            class="modal-form modal-form-compacta"
+                        >
+                            <input type="hidden" name="origem" value="perfil">
+                            <input type="hidden" name="origem_username" value="{{ usuario.username }}">
+
+                            <p>
+                                Você está suspendendo
+                                <strong>@{{ usuario.username }}</strong>.
+                            </p>
+
+                            <label for="duracao_horas_perfil_{{ post.id }}">Tempo de suspensão em horas</label>
+                            <input
+                                type="number"
+                                id="duracao_horas_perfil_{{ post.id }}"
+                                name="duracao_horas"
+                                min="1"
+                                value="24"
+                                required
+                            >
+
+                            <label for="justificativa_suspensao_perfil_{{ post.id }}">Justificativa</label>
+                            <textarea
+                                id="justificativa_suspensao_perfil_{{ post.id }}"
+                                name="justificativa"
+                                rows="3"
+                                maxlength="255"
+                                required
+                            >Usuário suspenso pelo menu de moderação.</textarea>
+
+                            <div class="modal-footer">
+                                <span>Essa ação será registrada nos logs.</span>
+
+                                <button type="submit" class="danger-button">
+                                    Suspender
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <p>Nenhum post encontrado neste perfil.</p>
+        </div>
+    {% endfor %}
+</section>
+
+{% if current_user.is_authenticated and current_user.id == usuario.id %}
+    <div class="modal-overlay" id="modalEditarPerfil">
+        <div class="modal-card modal-card-profile-edit">
+            <div class="modal-header">
+                <h2>Editar perfil</h2>
+
+                <button
+                    type="button"
+                    class="modal-close"
+                    onclick="fecharModalTrecho('modalEditarPerfil')"
+                    aria-label="Fechar"
+                >
+                    <span class="icon-svg icon-x"></span>
+                </button>
+            </div>
+
+            <form
+                method="POST"
+                action="{{ url_for('perfil.editar_perfil') }}"
+                enctype="multipart/form-data"
+                class="modal-form modal-form-compacta profile-edit-form-trecho"
+            >
+                <input type="file" id="fotoPerfilCortada" name="foto_perfil_cortada" hidden>
+                <input type="file" id="capaPerfilCortada" name="capa_perfil_cortada" hidden>
+
+                <div class="profile-edit-cover-preview">
+                    <img
+                        id="previewCapaPerfil"
+                        src="{{ usuario.capa_perfil_url or '' }}"
+                        alt="Pré-visualização da capa"
+                        {% if not usuario.capa_perfil_url %}style="display: none;"{% endif %}
+                    >
+
+                    <label class="profile-icon-button profile-icon-cover-button" title="Alterar capa">
+                        <span class="icon-svg icon-camera"></span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onchange="iniciarCropPerfil(this, 'capa')"
+                        >
+                    </label>
+                </div>
+
+                <div class="profile-edit-avatar-preview">
+                    <div class="profile-avatar-trecho profile-avatar-modal-trecho">
+                        <img
+                            id="previewFotoPerfil"
+                            src="{{ usuario.foto_perfil_url or '' }}"
+                            alt="Pré-visualização da foto"
+                            {% if not usuario.foto_perfil_url %}style="display: none;"{% endif %}
+                        >
+
+                        <span id="previewFotoInicial" {% if usuario.foto_perfil_url %}style="display: none;"{% endif %}>
+                            {{ usuario.nome[0] }}
+                        </span>
+
+                        <label class="profile-icon-button profile-icon-avatar-button" title="Alterar foto">
+                            <span class="icon-svg icon-camera"></span>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onchange="iniciarCropPerfil(this, 'foto')"
+                            >
+                        </label>
+                    </div>
+                </div>
+
+                <label for="bio">Bio</label>
+                <textarea
+                    id="bio"
+                    name="bio"
+                    rows="4"
+                    maxlength="280"
+                    placeholder="Escreva uma bio curta..."
+                >{{ usuario.bio or '' }}</textarea>
+
+                <div class="modal-footer">
+                    <span>PNG, JPG, JPEG, WEBP ou GIF</span>
+
+                    <button type="submit">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay cropper-overlay-trecho" id="modalCropPerfil">
+        <div class="cropper-shell-trecho">
+            <div class="cropper-header-trecho">
+                <button
+                    type="button"
+                    class="cropper-back-button-trecho"
+                    onclick="fecharModalTrecho('modalCropPerfil')"
+                    aria-label="Voltar"
+                >
+                    <span class="icon-svg icon-arrow-left"></span>
+                </button>
+
+                <h2 id="tituloCropPerfil">Editar mídia</h2>
+
+                <button
+                    type="button"
+                    class="cropper-apply-button-trecho"
+                    onclick="aplicarCropPerfil()"
+                >
+                    Aplicar
+                </button>
+            </div>
+
+            <div class="cropper-stage-trecho">
+                <div class="cropper-frame-trecho" id="cropperFramePerfil">
+                    <canvas id="canvasCropPerfil"></canvas>
+                </div>
+            </div>
+
+            <div class="cropper-footer-trecho">
+                <span class="icon-svg icon-zoom-out"></span>
+
+                <input
+                    type="range"
+                    id="cropZoom"
+                    min="1"
+                    max="3"
+                    step="0.01"
+                    value="1"
+                >
+
+                <span class="icon-svg icon-zoom-in"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cropImagemPerfil = new Image();
+        let cropTipoPerfil = null;
+
+        let cropOffsetX = 0;
+        let cropOffsetY = 0;
+
+        let cropArrastando = false;
+        let cropInicioMouseX = 0;
+        let cropInicioMouseY = 0;
+        let cropInicioOffsetX = 0;
+        let cropInicioOffsetY = 0;
+
+        const cropConfigPerfil = {
+            foto: {
+                largura: 600,
+                altura: 600,
+                inputFinal: "fotoPerfilCortada",
+                preview: "previewFotoPerfil",
+                inicial: "previewFotoInicial",
+                titulo: "Editar foto"
+            },
+            capa: {
+                largura: 1200,
+                altura: 400,
+                inputFinal: "capaPerfilCortada",
+                preview: "previewCapaPerfil",
+                inicial: null,
+                titulo: "Editar capa"
+            }
+        };
+
+        function limitarValor(valor, minimo, maximo) {
+            return Math.max(minimo, Math.min(maximo, valor));
+        }
+
+        function iniciarCropPerfil(input, tipo) {
+            const arquivo = input.files[0];
+
+            if (!arquivo) {
+                return;
+            }
+
+            cropTipoPerfil = tipo;
+            cropOffsetX = 0;
+            cropOffsetY = 0;
+
+            const leitor = new FileReader();
+
+            leitor.onload = function (evento) {
+                cropImagemPerfil = new Image();
+
+                cropImagemPerfil.onload = function () {
+                    const config = cropConfigPerfil[cropTipoPerfil];
+
+                    document.getElementById("tituloCropPerfil").textContent = config.titulo;
+                    document.getElementById("cropZoom").value = 1;
+
+                    desenharCropPerfil();
+                    abrirModalTrecho("modalCropPerfil");
+                };
+
+                cropImagemPerfil.src = evento.target.result;
+            };
+
+            leitor.readAsDataURL(arquivo);
+            input.value = "";
+        }
+
+        function calcularAreaCropPerfil() {
+            const config = cropConfigPerfil[cropTipoPerfil];
+
+            const larguraImagem = cropImagemPerfil.naturalWidth;
+            const alturaImagem = cropImagemPerfil.naturalHeight;
+
+            const proporcaoAlvo = config.largura / config.altura;
+            const proporcaoImagem = larguraImagem / alturaImagem;
+
+            let larguraBase;
+            let alturaBase;
+
+            if (proporcaoImagem > proporcaoAlvo) {
+                alturaBase = alturaImagem;
+                larguraBase = alturaImagem * proporcaoAlvo;
+            } else {
+                larguraBase = larguraImagem;
+                alturaBase = larguraImagem / proporcaoAlvo;
+            }
+
+            const zoom = parseFloat(document.getElementById("cropZoom").value);
+
+            const larguraCrop = larguraBase / zoom;
+            const alturaCrop = alturaBase / zoom;
+
+            const maxDeslocamentoX = (larguraImagem - larguraCrop) / 2;
+            const maxDeslocamentoY = (alturaImagem - alturaCrop) / 2;
+
+            const centroX = (larguraImagem / 2) + (maxDeslocamentoX * (cropOffsetX / 100));
+            const centroY = (alturaImagem / 2) + (maxDeslocamentoY * (cropOffsetY / 100));
+
+            let origemX = centroX - (larguraCrop / 2);
+            let origemY = centroY - (alturaCrop / 2);
+
+            origemX = limitarValor(origemX, 0, larguraImagem - larguraCrop);
+            origemY = limitarValor(origemY, 0, alturaImagem - alturaCrop);
+
+            return {
+                origemX: origemX,
+                origemY: origemY,
+                larguraCrop: larguraCrop,
+                alturaCrop: alturaCrop
+            };
+        }
+
+        function desenharCropPerfil() {
+            if (!cropTipoPerfil || !cropImagemPerfil.complete) {
+                return;
+            }
+
+            const config = cropConfigPerfil[cropTipoPerfil];
+            const canvas = document.getElementById("canvasCropPerfil");
+            const contexto = canvas.getContext("2d");
+
+            canvas.width = config.largura;
+            canvas.height = config.altura;
+
+            const area = calcularAreaCropPerfil();
+
+            contexto.clearRect(0, 0, canvas.width, canvas.height);
+
+            contexto.drawImage(
+                cropImagemPerfil,
+                area.origemX,
+                area.origemY,
+                area.larguraCrop,
+                area.alturaCrop,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        }
+
+        function iniciarArrastoCropPerfil(event) {
+            if (!cropTipoPerfil) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const frame = document.getElementById("cropperFramePerfil");
+
+            cropArrastando = true;
+            cropInicioMouseX = event.clientX;
+            cropInicioMouseY = event.clientY;
+            cropInicioOffsetX = cropOffsetX;
+            cropInicioOffsetY = cropOffsetY;
+
+            frame.classList.add("dragging");
+            frame.setPointerCapture(event.pointerId);
+        }
+
+        function moverCropPerfil(event) {
+            if (!cropArrastando) {
+                return;
+            }
+
+            const frame = document.getElementById("cropperFramePerfil");
+            const larguraFrame = frame.clientWidth || 1;
+            const alturaFrame = frame.clientHeight || 1;
+
+            const deltaX = event.clientX - cropInicioMouseX;
+            const deltaY = event.clientY - cropInicioMouseY;
+
+            cropOffsetX = limitarValor(
+                cropInicioOffsetX - ((deltaX / larguraFrame) * 200),
+                -100,
+                100
+            );
+
+            cropOffsetY = limitarValor(
+                cropInicioOffsetY - ((deltaY / alturaFrame) * 200),
+                -100,
+                100
+            );
+
+            desenharCropPerfil();
+        }
+
+        function finalizarArrastoCropPerfil(event) {
+            if (!cropArrastando) {
+                return;
+            }
+
+            cropArrastando = false;
+
+            const frame = document.getElementById("cropperFramePerfil");
+            frame.classList.remove("dragging");
+
+            try {
+                frame.releasePointerCapture(event.pointerId);
+            } catch (erro) {
+                /* navegador já liberou o ponteiro */
+            }
+        }
+
+        function aplicarCropPerfil() {
+            const config = cropConfigPerfil[cropTipoPerfil];
+            const canvas = document.getElementById("canvasCropPerfil");
+
+            canvas.toBlob(function (blob) {
+                const nomeArquivo = cropTipoPerfil + "_perfil_cortada.png";
+
+                const arquivoFinal = new File([blob], nomeArquivo, {
+                    type: "image/png"
+                });
+
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(arquivoFinal);
+
+                document.getElementById(config.inputFinal).files = dataTransfer.files;
+
+                const preview = document.getElementById(config.preview);
+                preview.src = canvas.toDataURL("image/png");
+                preview.style.display = "block";
+
+                if (config.inicial) {
+                    const inicial = document.getElementById(config.inicial);
+                    inicial.style.display = "none";
+                }
+
+                fecharModalTrecho("modalCropPerfil");
+            }, "image/png");
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const zoom = document.getElementById("cropZoom");
+            const frame = document.getElementById("cropperFramePerfil");
+
+            if (zoom) {
+                zoom.addEventListener("input", desenharCropPerfil);
+            }
+
+            if (frame) {
+                frame.addEventListener("pointerdown", iniciarArrastoCropPerfil);
+                frame.addEventListener("pointermove", moverCropPerfil);
+                frame.addEventListener("pointerup", finalizarArrastoCropPerfil);
+                frame.addEventListener("pointercancel", finalizarArrastoCropPerfil);
+                frame.addEventListener("pointerleave", finalizarArrastoCropPerfil);
+            }
+        });
+    </script>
+{% endif %}
+
+{% endblock %}

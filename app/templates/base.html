@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Trecho{% endblock %}</title>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -16,7 +17,9 @@
             <a href="{{ url_for('posts.feed') }}">Página inicial</a>
 
             {% if current_user.is_authenticated %}
-                <a href="#">Perfil</a>
+                <a href="{{ url_for('perfil.visualizar_perfil', username=current_user.username) }}">Perfil</a>
+
+                <a href="{{ url_for('notificacoes.listar_notificacoes') }}">Notificações</a>
 
                 {% if current_user.tem_perfil('usuario', 'moderador', 'admin') %}
                     <a href="{{ url_for('posts.novo_post') }}" class="sidebar-post-button" id="abrirModalNovoPost">Novo trecho</a>
@@ -43,7 +46,11 @@
         {% if current_user.is_authenticated %}
             <div class="sidebar-user">
                 <div class="avatar-small">
-                    {{ current_user.nome[0] }}
+                    {% if current_user.foto_perfil_url %}
+                        <img src="{{ current_user.foto_perfil_url }}" alt="Foto de perfil">
+                    {% else %}
+                        {{ current_user.nome[0] }}
+                    {% endif %}
                 </div>
 
                 <div>
@@ -74,22 +81,9 @@
         <div class="side-card">
             <h2>Sobre o Trecho</h2>
             <p>O Trecho é uma rede social de microblogging criada para compartilhar ideias curtas de forma simples, organizada e segura.
-                O sistema foi desenvolvido com Flask, MySQL e SQLAlchemy, contando com recursos de publicação, comentários, 
+                O sistema foi desenvolvido com Flask, MySQL e SQLAlchemy, contando com recursos de publicação, comentários,
                 curtidas, denúncias, moderação, auditoria e controle de acesso por perfis.
                 Novas versões em breve.</p>
-        </div>
-
-        <div class="side-card">
-            <h2>Atalhos</h2>
-            <a href="{{ url_for('posts.feed') }}">Feed</a>
-
-            {% if current_user.is_authenticated and current_user.tem_perfil('moderador', 'admin') %}
-                <a href="{{ url_for('moderacao.painel_moderacao') }}">Denúncias pendentes</a>
-            {% endif %}
-
-            {% if current_user.is_authenticated and current_user.tem_perfil('analista', 'admin') %}
-                <a href="{{ url_for('relatorios.painel_relatorios') }}">Relatórios</a>
-            {% endif %}
         </div>
     </aside>
 
@@ -123,8 +117,44 @@
         </form>
     </div>
 </div>
+{% endif %}
+
+<!-- Modal para visitante tentando interagir -->
+{% if not current_user.is_authenticated %}
+<div class="modal-overlay" id="modalLoginNecessario">
+    <div class="modal-card modal-alert">
+        <div class="modal-header">
+            <h2>Entre para interagir</h2>
+
+            <button type="button" class="modal-close" onclick="fecharModalTrecho('modalLoginNecessario')">
+                ×
+            </button>
+        </div>
+
+        <div class="modal-alert-body">
+            <p>
+                Para curtir, comentar, denunciar ou bloquear usuários, é necessário estar logado no Trecho.
+            </p>
+
+            <div class="login-required-actions">
+                <a href="{{ url_for('auth.login') }}" class="button-link">
+                    Entrar
+                </a>
+
+                <button type="button" class="button-secondary" onclick="alert('Cadastro será implementado em uma próxima etapa.')">
+                    Criar usuário
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <script>
+    /*
+        Modal de novo post.
+        Mantém o funcionamento que você já tinha.
+    */
     document.addEventListener("DOMContentLoaded", function () {
         const botaoAbrir = document.getElementById("abrirModalNovoPost");
         const botaoFechar = document.getElementById("fecharModalNovoPost");
@@ -156,9 +186,11 @@
         });
     });
 </script>
-{% endif %}
 
 <script>
+    /*
+        Habilita o botão de postagem somente quando existe texto.
+    */
     document.addEventListener("DOMContentLoaded", function () {
         function configurarBotaoPostagem(campoId, botaoId) {
             const campo = document.getElementById(campoId);
@@ -179,6 +211,66 @@
 
         configurarBotaoPostagem("campoPostFeed", "botaoPostarFeed");
         configurarBotaoPostagem("campoPostModal", "botaoPostarModal");
+    });
+</script>
+
+<script>
+    /*
+        Funções usadas pelos menus de 3 pontinhos e modais novos.
+    */
+
+    function alternarMenuTresPontos(idMenu) {
+        const menu = document.getElementById(idMenu);
+
+        document.querySelectorAll(".dropdown-menu-trecho").forEach(function (item) {
+            if (item.id !== idMenu) {
+                item.classList.remove("active");
+            }
+        });
+
+        if (menu) {
+            menu.classList.toggle("active");
+        }
+    }
+
+    function abrirModalTrecho(idModal) {
+        const modal = document.getElementById(idModal);
+
+        if (modal) {
+            modal.classList.add("active");
+        }
+    }
+
+    function fecharModalTrecho(idModal) {
+        const modal = document.getElementById(idModal);
+
+        if (modal) {
+            modal.classList.remove("active");
+        }
+    }
+
+    function abrirModalLoginNecessario() {
+        abrirModalTrecho("modalLoginNecessario");
+    }
+
+    document.addEventListener("click", function (event) {
+        if (!event.target.closest(".dropdown-trecho")) {
+            document.querySelectorAll(".dropdown-menu-trecho").forEach(function (menu) {
+                menu.classList.remove("active");
+            });
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            document.querySelectorAll(".modal-overlay.active").forEach(function (modal) {
+                modal.classList.remove("active");
+            });
+
+            document.querySelectorAll(".dropdown-menu-trecho.active").forEach(function (menu) {
+                menu.classList.remove("active");
+            });
+        }
     });
 </script>
 

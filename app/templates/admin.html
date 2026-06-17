@@ -25,11 +25,21 @@
                     <th>Denúncias feitas</th>
                 </tr>
             </thead>
+
             <tbody>
                 {% for usuario in usuarios %}
                     <tr>
                         <td>{{ usuario.nome }}</td>
-                        <td>@{{ usuario.username }}</td>
+
+                        <td>
+                            <a
+                                href="{{ url_for('perfil.visualizar_perfil', username=usuario.username) }}"
+                                class="table-link-trecho"
+                            >
+                                @{{ usuario.username }}
+                            </a>
+                        </td>
+
                         <td>{{ usuario.email }}</td>
                         <td>{{ usuario.perfil }}</td>
                         <td>{{ usuario.status_conta }}</td>
@@ -59,11 +69,21 @@
                     <th>IP</th>
                 </tr>
             </thead>
+
             <tbody>
                 {% for log in logs_login %}
                     <tr>
                         <td>{{ log.nome }}</td>
-                        <td>@{{ log.username }}</td>
+
+                        <td>
+                            <a
+                                href="{{ url_for('perfil.visualizar_perfil', username=log.username) }}"
+                                class="table-link-trecho"
+                            >
+                                @{{ log.username }}
+                            </a>
+                        </td>
+
                         <td>{{ log.data_login }}</td>
                         <td>{{ log.ip_acesso }}</td>
                     </tr>
@@ -91,19 +111,39 @@
                     <th>Data</th>
                 </tr>
             </thead>
+
             <tbody>
                 {% for log in logs_moderacao %}
                     <tr>
-                        <td>@{{ log.moderador_username }}</td>
-                        <td>{{ log.acao }}</td>
-                        <td>{{ log.justificativa }}</td>
                         <td>
-                            {% if log.usuario_alvo_username %}
-                                @{{ log.usuario_alvo_username }}
+                            {% if log.moderador_username %}
+                                <a
+                                    href="{{ url_for('perfil.visualizar_perfil', username=log.moderador_username) }}"
+                                    class="table-link-trecho"
+                                >
+                                    @{{ log.moderador_username }}
+                                </a>
                             {% else %}
                                 -
                             {% endif %}
                         </td>
+
+                        <td>{{ log.acao }}</td>
+                        <td>{{ log.justificativa }}</td>
+
+                        <td>
+                            {% if log.usuario_alvo_username %}
+                                <a
+                                    href="{{ url_for('perfil.visualizar_perfil', username=log.usuario_alvo_username) }}"
+                                    class="table-link-trecho"
+                                >
+                                    @{{ log.usuario_alvo_username }}
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+
                         <td>{{ log.data_acao }}</td>
                     </tr>
                 {% else %}
@@ -117,3 +157,4 @@
 </section>
 
 {% endblock %}
+

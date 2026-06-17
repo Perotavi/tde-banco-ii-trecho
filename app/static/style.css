@@ -100,11 +100,20 @@ textarea {
     place-items: center;
     font-weight: bold;
     flex-shrink: 0;
+    overflow: hidden;
 }
 
 .avatar-small {
     width: 42px;
     height: 42px;
+}
+
+.avatar-small img,
+.composer-avatar img,
+.tweet-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .content-column {
@@ -1115,4 +1124,1524 @@ textarea:focus,
     .report-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* =========================
+   FUNCIONALIDADES NOVAS
+   Menus, comentários e perfil
+   Mantendo a estética original
+========================= */
+
+.dropdown-trecho {
+    position: relative;
+}
+
+.dropdown-trecho .tweet-more {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1.1rem;
+}
+
+.dropdown-menu-trecho {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 32px;
+    z-index: 50;
+    min-width: 190px;
+    background: #fffdf9;
+    border: 1px solid #ddd4c8;
+    border-radius: 14px;
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.dropdown-menu-trecho.active {
+    display: block;
+}
+
+.dropdown-menu-trecho a,
+.dropdown-menu-trecho button {
+    display: block;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #222;
+    padding: 11px 14px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: normal;
+    border-radius: 0;
+}
+
+.dropdown-menu-trecho a:hover,
+.dropdown-menu-trecho button:hover {
+    color: #704723;
+    background: #f4f1ec;
+}
+
+.dropdown-menu-trecho form {
+    margin: 0;
+}
+
+.dropdown-menu-trecho .danger-option {
+    color: #9f2d2d;
+    font-weight: bold;
+}
+
+.comments-area-trecho {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #ddd4c8;
+}
+
+.comment-card-trecho {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.comment-avatar-trecho {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #8b5e34;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: bold;
+    flex-shrink: 0;
+    overflow: hidden;
+    font-size: 0.9rem;
+}
+
+.comment-avatar-trecho img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.comment-content-trecho {
+    background: #fff;
+    border: 1px solid #ddd4c8;
+    border-radius: 14px;
+    padding: 9px 12px;
+    max-width: 100%;
+}
+
+.comment-content-trecho strong {
+    color: #222;
+    font-size: 0.92rem;
+}
+
+.comment-content-trecho span {
+    color: #777;
+    font-size: 0.88rem;
+    margin-left: 4px;
+}
+
+.comment-content-trecho p {
+    margin: 5px 0 0 0;
+    color: #222;
+    line-height: 1.4;
+    font-size: 0.94rem;
+}
+
+.comment-form-trecho {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.comment-form-trecho input {
+    flex: 1;
+    border: 1px solid #cfc7bd;
+    border-radius: 999px;
+    padding: 10px 14px;
+    background: #fffdf9;
+    outline: none;
+}
+
+.comment-form-trecho button {
+    border: none;
+    border-radius: 999px;
+    background: #8b5e34;
+    color: #fff;
+    padding: 10px 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.70s;
+}
+
+.comment-form-trecho button:hover {
+    background: #8b5e34;
+    opacity: 0.82;
+}
+
+.modal-form-compacta p {
+    margin: 0 0 14px 0;
+    color: #444;
+    line-height: 1.5;
+}
+
+.modal-form-compacta label {
+    display: block;
+    margin: 12px 0 6px 0;
+    font-weight: bold;
+    color: #222;
+}
+
+.modal-form-compacta input {
+    width: 100%;
+    border: 1px solid #cfc7bd;
+    border-radius: 10px;
+    padding: 11px 12px;
+    background: #fffdf9;
+    outline: none;
+}
+
+.modal-form-compacta textarea {
+    width: 100%;
+    border: 1px solid #cfc7bd;
+    border-radius: 10px;
+    padding: 11px 12px;
+    background: #fffdf9;
+    outline: none;
+    min-height: 90px;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.danger-button {
+    background: #9f2d2d !important;
+}
+
+.danger-button:hover {
+    background: #9f2d2d !important;
+    opacity: 0.82;
+}
+
+/* Classes que serão usadas nas próximas telas de perfil/notificações */
+.profile-cover-trecho {
+    height: 180px;
+    background: #ddd4c8;
+    border-bottom: 1px solid #ddd4c8;
+    overflow: hidden;
+}
+
+.profile-cover-trecho img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-card-trecho {
+    padding: 0 22px 22px;
+    border-bottom: 1px solid #ddd4c8;
+}
+
+.profile-avatar-trecho {
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    background: #8b5e34;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: bold;
+    font-size: 2rem;
+    margin-top: -46px;
+    border: 4px solid #f4f1ec;
+    overflow: hidden;
+}
+
+.profile-avatar-trecho img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.notification-card-trecho {
+    margin: 16px 20px;
+    background: #fff;
+    border: 1px solid #ddd4c8;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+/* =========================
+   ÍCONES SVG VIA CSS
+   Evita emojis desalinhados
+========================= */
+
+.icon-svg {
+    width: 18px;
+    height: 18px;
+    display: inline-block;
+    background: currentColor;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.icon-more {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='5' cy='12' r='2'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Ccircle cx='19' cy='12' r='2'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='5' cy='12' r='2'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Ccircle cx='19' cy='12' r='2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-comment {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M21 12a8 8 0 0 1-8 8H7l-4 3 1.3-5.2A8 8 0 1 1 21 12Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M21 12a8 8 0 0 1-8 8H7l-4 3 1.3-5.2A8 8 0 1 1 21 12Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-heart {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-heart-filled {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-camera {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 7h3l2-3h6l2 3h3v13H4V7Z'/%3E%3Ccircle cx='12' cy='13' r='4' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 7h3l2-3h6l2 3h3v13H4V7Z'/%3E%3Ccircle cx='12' cy='13' r='4' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-x {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='black' stroke-width='2.5' stroke-linecap='round' d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='black' stroke-width='2.5' stroke-linecap='round' d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-arrow-left {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M19 12H5m7-7-7 7 7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M19 12H5m7-7-7 7 7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-zoom-out {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='6' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath stroke='black' stroke-width='2' stroke-linecap='round' d='M7 10h6m2.5 5.5L21 21'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='6' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath stroke='black' stroke-width='2' stroke-linecap='round' d='M7 10h6m2.5 5.5L21 21'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.icon-zoom-in {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='6' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath stroke='black' stroke-width='2' stroke-linecap='round' d='M10 7v6M7 10h6m2.5 5.5L21 21'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='6' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath stroke='black' stroke-width='2' stroke-linecap='round' d='M10 7v6M7 10h6m2.5 5.5L21 21'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* =========================
+   INTERAÇÕES DO FEED
+========================= */
+
+.tweet-click-area {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+
+.tweet-click-area:hover {
+    color: inherit;
+    text-decoration: none;
+}
+
+.tweet-action-button,
+.tweet-action-static,
+.like-button {
+    border: none;
+    background: transparent;
+    color: #666;
+    font-size: 0.95rem;
+    cursor: pointer;
+    padding: 0;
+    transition: 0.70s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tweet-action-static {
+    cursor: default;
+}
+
+.tweet-action-button:hover,
+.like-button:hover {
+    color: #704723;
+}
+
+.like-button.liked {
+    color: #9f2d2d;
+    font-weight: bold;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* =========================
+   MENU DE 3 PONTINHOS
+========================= */
+
+.dropdown-trecho {
+    position: relative;
+}
+
+.dropdown-trecho .tweet-more {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    color: #777;
+}
+
+.dropdown-menu-trecho {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 32px;
+    z-index: 50;
+    min-width: 190px;
+    background: #fffdf9;
+    border: 1px solid #ddd4c8;
+    border-radius: 14px;
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.dropdown-menu-trecho.active {
+    display: block;
+}
+
+.dropdown-menu-trecho a,
+.dropdown-menu-trecho button {
+    display: block;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #222;
+    padding: 11px 14px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: normal;
+    border-radius: 0;
+}
+
+.dropdown-menu-trecho a:hover,
+.dropdown-menu-trecho button:hover {
+    color: #704723;
+    background: #f4f1ec;
+}
+
+.dropdown-menu-trecho form {
+    margin: 0;
+}
+
+.dropdown-menu-trecho .danger-option {
+    color: #9f2d2d;
+    font-weight: bold;
+}
+
+/* =========================
+   MODAIS COMPACTOS
+========================= */
+
+.modal-close {
+    display: grid;
+    place-items: center;
+}
+
+.modal-close .icon-svg {
+    width: 20px;
+    height: 20px;
+}
+
+.modal-form-compacta p {
+    margin: 0 0 14px 0;
+    color: #444;
+    line-height: 1.5;
+}
+
+.modal-form-compacta label {
+    display: block;
+    margin: 12px 0 6px 0;
+    font-weight: bold;
+    color: #222;
+}
+
+.modal-form-compacta input {
+    width: 100%;
+    border: 1px solid #cfc7bd;
+    border-radius: 10px;
+    padding: 11px 12px;
+    background: #fffdf9;
+    outline: none;
+}
+
+.modal-form-compacta textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: #222;
+    font-size: 1.1rem;
+    line-height: 1.5;
+    min-height: 100px;
+}
+
+.modal-post-preview {
+    background: #fff;
+    border: 1px solid #ddd4c8;
+    border-radius: 14px;
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.modal-post-preview strong {
+    color: #704723;
+}
+
+.modal-post-preview p {
+    margin: 8px 0 0 0;
+    color: #222;
+}
+
+.danger-button {
+    background: #9f2d2d !important;
+}
+
+.danger-button:hover {
+    background: #9f2d2d !important;
+    opacity: 0.82;
+}
+
+/* =========================
+   MODAL DE LOGIN NECESSÁRIO
+========================= */
+
+.login-required-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.button-secondary {
+    margin-top: 12px;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 16px;
+    background: #ddd4c8;
+    color: #222;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-block;
+    transition: 0.70s;
+}
+
+.button-secondary:hover {
+    opacity: 0.82;
+}
+
+/* =========================
+   TELA INDIVIDUAL DO POST
+========================= */
+
+.post-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.post-detail-header h1 {
+    margin: 0;
+}
+
+.post-detail-card {
+    border-bottom: 1px solid #ddd4c8;
+}
+
+.reply-box-trecho {
+    display: flex;
+    gap: 14px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #ddd4c8;
+    background: #f4f1ec;
+}
+
+.reply-form-trecho {
+    flex: 1;
+}
+
+.reply-form-trecho textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: #222;
+    font-size: 1.25rem;
+    line-height: 1.4;
+    min-height: 82px;
+    padding: 8px 0 14px 0;
+}
+
+.reply-form-trecho textarea::placeholder {
+    color: #777;
+}
+
+.reply-form-footer-trecho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #ddd4c8;
+    padding-top: 12px;
+}
+
+.reply-form-footer-trecho span {
+    color: #8b5e34;
+    font-size: 0.92rem;
+    font-weight: bold;
+}
+
+.reply-form-footer-trecho button {
+    border: none;
+    background: #8b5e34;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.70s;
+}
+
+.reply-form-footer-trecho button:hover {
+    background: #8b5e34;
+    opacity: 0.82;
+}
+
+.reply-login-trecho {
+    padding: 18px 20px;
+    border-bottom: 1px solid #ddd4c8;
+    background: #f4f1ec;
+}
+
+.reply-login-trecho p {
+    color: #666;
+    margin-top: 0;
+}
+
+.comments-list-trecho {
+    display: flex;
+    flex-direction: column;
+}
+
+.comment-detail-card-trecho {
+    border-bottom: 1px solid #ddd4c8;
+}
+
+/* =========================
+   PERFIL
+========================= */
+
+.profile-cover-trecho {
+    height: 180px;
+    background: #ddd4c8;
+    border-bottom: 1px solid #ddd4c8;
+    overflow: hidden;
+}
+
+.profile-cover-trecho img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-card-trecho {
+    padding: 0 22px 22px;
+    border-bottom: 1px solid #ddd4c8;
+}
+
+.profile-avatar-trecho {
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    background: #8b5e34;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: bold;
+    font-size: 2rem;
+    margin-top: -46px;
+    border: 4px solid #f4f1ec;
+    overflow: hidden;
+}
+
+.profile-avatar-trecho img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-info-trecho {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 12px;
+}
+
+.profile-info-trecho h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+.profile-info-trecho p {
+    margin: 4px 0 0;
+    color: #666;
+}
+
+.profile-edit-button-trecho {
+    border: none;
+    cursor: pointer;
+}
+
+.profile-bio-trecho {
+    margin-top: 16px;
+    line-height: 1.5;
+}
+
+.profile-empty-text {
+    color: #777;
+}
+
+.profile-meta-trecho {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 14px;
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.profile-posts-header h1 {
+    font-size: 1.4rem;
+}
+
+/* =========================
+   MODAL DE EDITAR PERFIL
+========================= */
+
+.modal-card-profile-edit {
+    width: min(640px, 96%);
+}
+
+.profile-edit-form-trecho {
+    padding-top: 0;
+}
+
+.profile-edit-cover-preview {
+    position: relative;
+    height: 170px;
+    margin: 0 -22px 18px;
+    background: #ddd4c8;
+    overflow: hidden;
+}
+
+.profile-edit-cover-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-edit-avatar-preview {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.profile-avatar-modal-trecho {
+    position: relative;
+    width: 76px;
+    height: 76px;
+    margin-top: 0;
+    border: 3px solid #f4f1ec;
+    font-size: 1.5rem;
+}
+
+.profile-icon-button {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(34, 34, 34, 0.72);
+    color: #fff !important;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: 0.70s;
+}
+
+.profile-icon-button .icon-svg {
+    width: 20px;
+    height: 20px;
+}
+
+.profile-icon-button:hover {
+    opacity: 0.82;
+}
+
+.profile-icon-button input {
+    display: none;
+}
+
+.profile-icon-cover-button {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.profile-icon-avatar-button {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* =========================
+   CROPPER ESTILO EDITAR MÍDIA
+========================= */
+
+.cropper-overlay-trecho {
+    z-index: 1200;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(2px);
+}
+
+.cropper-shell-trecho {
+    width: min(620px, 96vw);
+    max-height: 94vh;
+    background: #000;
+    border-radius: 0 0 12px 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.cropper-header-trecho {
+    height: 58px;
+    background: #111;
+    color: #fff;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+}
+
+.cropper-header-trecho h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.cropper-back-button-trecho {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+}
+
+.cropper-back-button-trecho:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.cropper-apply-button-trecho {
+    border: none;
+    background: #fff;
+    color: #111;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.cropper-stage-trecho {
+    background: #000;
+    padding: 20px 48px 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cropper-frame-trecho {
+    width: 100%;
+    border: 4px solid #1d9bf0;
+    background: #111;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+}
+
+#canvasCropPerfil {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.cropper-footer-trecho {
+    background: #000;
+    padding: 14px 110px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: #bbb;
+}
+
+.cropper-footer-trecho .icon-svg {
+    width: 18px;
+    height: 18px;
+}
+
+.cropper-footer-trecho input[type="range"] {
+    width: 100%;
+    accent-color: #1d9bf0;
+}
+
+/* =========================
+   NOTIFICAÇÕES
+========================= */
+
+.notifications-list-trecho {
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-card-trecho {
+    margin: 16px 20px;
+    background: #fff;
+    border: 1px solid #ddd4c8;
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.notification-unread-trecho {
+    border-color: #8b5e34;
+}
+
+.notification-main-trecho {
+    display: flex;
+    gap: 12px;
+}
+
+.notification-icon-trecho {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #8b5e34;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.notification-main-trecho p {
+    margin: 0 0 6px 0;
+    line-height: 1.4;
+}
+
+.notification-main-trecho span {
+    display: block;
+    color: #777;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.notification-main-trecho a {
+    color: #8b5e34;
+    font-weight: bold;
+}
+
+.notification-status-trecho {
+    color: #8b5e34;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+/* ============================================================
+   CORREÇÕES FINAIS DE ÍCONES, AÇÕES E CROPPER
+   Mantém tudo em um CSS só
+============================================================ */
+
+/* Garante que os botões de ação fiquem alinhados */
+.tweet-actions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.tweet-actions form,
+.like-form {
+    margin: 0;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+}
+
+.tweet-action-button,
+.tweet-action-static,
+.like-button {
+    min-height: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #666;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    vertical-align: middle;
+}
+
+.tweet-action-static {
+    cursor: default;
+}
+
+.tweet-action-button span,
+.like-button span,
+.tweet-action-static span {
+    line-height: 1;
+}
+
+.tweet-action-button:hover,
+.like-button:hover {
+    color: #704723;
+}
+
+.like-button.liked {
+    color: #9f2d2d;
+    font-weight: bold;
+}
+
+/* Ícones SVG sempre centralizados */
+.icon-svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    background: currentColor;
+    flex-shrink: 0;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* Ajuste fino: o balão de comentário parece visualmente mais baixo */
+.icon-comment {
+    width: 18px;
+    height: 18px;
+    transform: translateY(0);
+}
+
+/* Ajuste fino: coração fica visualmente no mesmo eixo */
+.icon-heart,
+.icon-heart-filled {
+    width: 18px;
+    height: 18px;
+    transform: translateY(0);
+}
+
+/* Botão de três pontinhos */
+.dropdown-trecho .tweet-more {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    display: grid;
+    place-items: center;
+    color: #777;
+    cursor: pointer;
+}
+
+.dropdown-trecho .tweet-more:hover {
+    background: transparent;
+    color: #704723;
+}
+
+/* Botão de fechar modal com SVG centralizado */
+.modal-close {
+    display: grid;
+    place-items: center;
+    padding: 0;
+}
+
+.modal-close .icon-svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* ============================================================
+   CORREÇÃO DO ÍCONE DE CÂMERA NO AVATAR
+============================================================ */
+
+.profile-avatar-modal-trecho {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+
+.profile-icon-button {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(34, 34, 34, 0.72);
+    color: #fff !important;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.profile-icon-button .icon-svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+    margin: 0;
+    transform: none;
+}
+
+.profile-icon-button input {
+    display: none;
+}
+
+.profile-icon-cover-button,
+.profile-icon-avatar-button {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) !important;
+}
+
+/* Evita que o botão de câmera do avatar herde comportamento estranho */
+.profile-avatar-modal-trecho .profile-icon-avatar-button {
+    z-index: 3;
+}
+
+/* Garante que a imagem não empurre o ícone */
+.profile-avatar-modal-trecho img,
+.profile-avatar-modal-trecho span:not(.icon-svg) {
+    grid-area: 1 / 1;
+}
+
+.profile-avatar-modal-trecho .profile-icon-avatar-button {
+    grid-area: 1 / 1;
+}
+
+/* ============================================================
+   CROPPER ESTILO EDITAR MÍDIA
+============================================================ */
+
+.cropper-overlay-trecho {
+    z-index: 1200;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(2px);
+}
+
+.cropper-shell-trecho {
+    width: min(620px, 96vw);
+    max-height: 94vh;
+    background: #000;
+    border-radius: 0 0 12px 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.cropper-header-trecho {
+    height: 58px;
+    background: #111;
+    color: #fff;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+}
+
+.cropper-header-trecho h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.cropper-back-button-trecho {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #fff;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+}
+
+.cropper-back-button-trecho:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.cropper-apply-button-trecho {
+    border: none;
+    background: #fff;
+    color: #111;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.cropper-stage-trecho {
+    background: #000;
+    padding: 20px 48px 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cropper-frame-trecho {
+    width: 100%;
+    border: 4px solid #1d9bf0;
+    background: #111;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+}
+
+#canvasCropPerfil {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.cropper-footer-trecho {
+    background: #000;
+    padding: 14px 110px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: #bbb;
+}
+
+.cropper-footer-trecho .icon-svg {
+    width: 18px;
+    height: 18px;
+}
+
+.cropper-footer-trecho input[type="range"] {
+    width: 100%;
+    accent-color: #1d9bf0;
+}
+
+/* ============================================================
+   AJUSTES FINAIS: ADMIN, ÍCONES DE CÂMERA E CROPPER TRECHO
+============================================================ */
+
+/* Links de usuários dentro das tabelas administrativas */
+.table-link-trecho {
+    color: #8b5e34;
+    font-weight: bold;
+    transition: 0.70s;
+}
+
+.table-link-trecho:hover {
+    color: #704723;
+    text-decoration: none;
+}
+
+/* Corrige centralização real dos botões de câmera */
+.profile-icon-button {
+    width: 42px;
+    height: 42px;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none;
+    border-radius: 50%;
+    background: rgba(34, 34, 34, 0.72);
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.profile-icon-button .icon-svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    position: static !important;
+}
+
+.profile-icon-cover-button,
+.profile-icon-avatar-button {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 5;
+}
+
+.profile-avatar-modal-trecho {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.profile-avatar-modal-trecho img,
+.profile-avatar-modal-trecho #previewFotoInicial {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ============================================================
+   CROPPER COM FUNCIONAMENTO ESTILO TWITTER,
+   MAS COM ESTÉTICA DO TRECHO
+============================================================ */
+
+.cropper-overlay-trecho {
+    z-index: 1200;
+    background: rgba(47, 36, 29, 0.45);
+    backdrop-filter: blur(5px);
+}
+
+.cropper-shell-trecho {
+    width: min(660px, 96vw);
+    max-height: 94vh;
+    background: #fdfaf5;
+    border: 1px solid #ddd4c8;
+    border-radius: 22px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.cropper-header-trecho {
+    height: 62px;
+    background: #fdfaf5;
+    color: #222;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px;
+    border-bottom: 1px solid #ddd4c8;
+}
+
+.cropper-header-trecho h2 {
+    margin: 0;
+    font-size: 1.35rem;
+}
+
+.cropper-back-button-trecho {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #555;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: 0.70s;
+}
+
+.cropper-back-button-trecho:hover {
+    color: #704723;
+    background: transparent;
+}
+
+.cropper-apply-button-trecho {
+    border: none;
+    background: #8b5e34;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.70s;
+}
+
+.cropper-apply-button-trecho:hover {
+    background: #8b5e34;
+    opacity: 0.82;
+}
+
+.cropper-stage-trecho {
+    background: #f4f1ec;
+    padding: 24px 48px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cropper-frame-trecho {
+    width: 100%;
+    border: 4px solid #8b5e34;
+    background: #111;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+.cropper-frame-trecho.dragging {
+    cursor: grabbing;
+}
+
+#canvasCropPerfil {
+    width: 100%;
+    height: auto;
+    display: block;
+    pointer-events: none;
+}
+
+.cropper-footer-trecho {
+    background: #fdfaf5;
+    padding: 18px 110px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: #704723;
+    border-top: 1px solid #ddd4c8;
+}
+
+.cropper-footer-trecho .icon-svg {
+    width: 18px;
+    height: 18px;
+}
+
+.cropper-footer-trecho input[type="range"] {
+    width: 100%;
+    accent-color: #8b5e34;
+}
+
+.post-detail-header .back-link {
+    color: #222;
+    transition: 0.30s;
+}
+
+.post-detail-header .back-link .icon-svg {
+    transition: 0.30s;
+}
+
+.post-detail-header .back-link:hover .icon-svg {
+    color: #8b5e34;
+}
+
+/* ============================================================
+   AJUSTE DO MODAL "ENTRE PARA INTERAGIR"
+============================================================ */
+
+.login-required-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.login-required-actions .button-link,
+.login-required-actions .button-secondary {
+    margin-top: 12px;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 16px;
+    background: #8b5e34;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    line-height: 1;
+    transition: 0.70s;
+}
+
+.login-required-actions .button-link:hover,
+.login-required-actions .button-secondary:hover {
+    background: #8b5e34;
+    opacity: 0.82;
+    text-decoration: none;
+}
+
+/* Menu principal no topo do perfil */
+.profile-main-menu-trecho {
+    position: relative;
+}
+
+.profile-main-menu-button-trecho {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50%;
+}
+
+/* ============================================================
+   ESTADO DE CONTA SUSPENSA
+============================================================ */
+
+.composer-disabled-trecho {
+    opacity: 0.78;
+}
+
+.composer-disabled-trecho textarea,
+.reply-disabled-trecho textarea {
+    cursor: not-allowed;
+    color: #777;
+}
+
+.composer-disabled-trecho .composer-button,
+.reply-disabled-trecho button,
+.disabled-action-trecho {
+    cursor: not-allowed !important;
+    opacity: 0.55;
+}
+
+.disabled-action-trecho:hover {
+    color: #666 !important;
+}
+
+.suspension-warning-trecho {
+    color: #9f2d2d !important;
+    font-weight: bold;
+    line-height: 1.4;
 }
